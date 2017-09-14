@@ -14,10 +14,15 @@
  * limitations under the License.
  */
 using System;
+using System.Collections.Generic;
+using System.Text;
 
 namespace Glitter.AST
 {
-    public abstract class AbstractSyntaxNode
+    public interface IStatementNodeVisitor<T>
     {
+        T VisitPrintStatement(PrintStatement statement);
+        T VisitExpressionStatement(ExpressionStatement statement);
+        T VisitVariableDeclarationStatement(VariableDeclarationStatement statement);
     }
 }

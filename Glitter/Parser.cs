@@ -69,22 +69,151 @@ namespace Glitter
             get { return CurrentToken.Type == TokenType.EndOfFile; }
         }
 
-        public ExpressionNode Parse()
+        public bool HasParseErrors { get; private set; } = false;
+
+        /// <summary>
+        ///  Read:
+        ///   Program -> Declaration* EOF
+        /// </summary>
+        public IList<Statement> Parse()
+        {
+            var statements = new List<Statement>();     // TODO: Estimate.
+            
+            while (!TokenStreamEnded)
+            {
+                statements.Add(Declarations());
+            }
+
+            return statements;
+        }
+
+        /// <summary>
+        ///  Declaration -> VariableDeclaration | Statement
+        /// </summary>
+        /// <returns></returns>
+        private Statement Declarations()
         {
             try
             {
-                return Expression();
+                if (AdvanceIfCurrentTokenIsOneOf(TokenType.Var))
+                {
+                    return VariableDeclaration();
+                }
+                else
+                {
+                    return Statement();
+                }
             }
-            catch (ParserException)
+            catch (ParserException e)
             {
-                // TODO: Add more error handling?
-                return null;
+                PerformErrorRecovery();
+                return null;        // TODO: Filter null from results!
             }
         }
 
+        /// <summary>
+        ///  VariableDeclaration -> "var" IDENTIFIER ( "=" Expression )? ";"
+        /// </summary>
+        /// <returns></returns>
+        private Statement VariableDeclaration()
+        {
+            var name = Consume(TokenType.Identifier, "Expected variable name");
+            ExpressionNode initializer = null;
+
+            if (AdvanceIfCurrentTokenIsOneOf(TokenType.Equal))
+            {
+                initializer = Expression();
+            }
+
+            Consume(TokenType.Semicolon, "Expected ; after variable declaration");
+            return new VariableDeclarationStatement(name, initializer);
+        }
+
+        /// <summary>
+        ///  Statement -> ExpressionStatement
+        ///             | PrintStatement
+        /// </summary>
+        private Statement Statement()
+        {
+            if (AdvanceIfCurrentTokenIsOneOf(TokenType.Print))
+            {
+                return PrintStatement();
+            }
+            else
+            {
+                // Not a statement.. fallthrough to expression
+                // TODO: This feels wrong? Especially because ExpressionStatement only holds Expression?
+                return ExpressionStatement();
+            }
+        }
+
+        /// <summary>
+        ///  PrintStatement -> "print" expression ";"
+        /// </summary>
+        /// <returns></returns>
+        private Statement PrintStatement()
+        {
+            var expression = Expression();
+            Consume(TokenType.Semicolon, "Expected ; after value");
+
+            return new PrintStatement(expression);
+        }
+
+        /// <summary>
+        ///  ExpressionStatement -> Expression ";"
+        /// </summary>
+        /// <returns></returns>
+        private Statement ExpressionStatement()
+        {
+            var expression = Expression();
+            Consume(TokenType.Semicolon, "Expected ; after expression");
+
+            return new ExpressionStatement(expression);
+        }
+
+        /// <summary>
+        ///  Expression -> Assignment
+        /// </summary>
         private ExpressionNode Expression()
         {
-            return Equality();
+            return Assignment();
+        }
+
+        /// <summary>
+        ///  Assignment -> Identifier "=" Assignment | Equality
+        /// </summary>
+        private ExpressionNode Assignment()
+        {
+            // Evaluate the left side of the (potential) assignment expression. Once the lhs expression has been
+            // read and if the following token is the "=" operator then treat this as an assignment expression.
+            // Otherwise fallthrough to the next rule (equality).
+            var leftValue = Equality();
+
+            if (AdvanceIfCurrentTokenIsOneOf(TokenType.Equal))
+            {
+                // This looks like an assignment expression!
+
+                // TODO: Is it OK to check if leftValue is valid BEFORE we try reading the r-value expression?
+                // It would be faster but need to make sure it doesn't change how things work...
+                var equalsToken = PreviousToken;
+                var rightValue = Assignment();
+
+                if (leftValue is VariableNode leftVarValue)
+                {
+                    var varName = leftVarValue.VariableName;
+                    return new AssignmentNode(varName, rightValue);
+                }
+                else
+                {
+                    throw RaiseError("Unexpected assignment target", leftValue.ToString(), equalsToken.LineNumber);
+                }
+            }
+            else
+            {
+                // This is not an assignment expression so perform fall through by returning the potential left hand
+                // side as the evaluated expression.
+                return leftValue;
+            }
         }
 
         /// <summary>
@@ -171,12 +300,16 @@ namespace Glitter
         }
 
         /// <summary>
-        ///  Primary -> NUMBER | STRING | "false" | "true" | "undefined" | "(" expression ")" ;
+        ///  Primary -> NUMBER | STRING | "false" | "true" | "undefined" | "(" expression ")" | IDENTIFIER
         /// </summary>
         /// <returns></returns>
         private ExpressionNode Primary()
         {
-            if (AdvanceIfCurrentTokenIsOneOf(TokenType.False))
+            if (AdvanceIfCurrentTokenIsOneOf(TokenType.Identifier))
+            {
+                return new VariableNode(PreviousToken);
+            }
+            else if (AdvanceIfCurrentTokenIsOneOf(TokenType.False))
             {
                 return new LiteralNode(false);
             }
@@ -267,6 +400,8 @@ namespace Glitter
                     LineNumber = lineNumber
                 });
             }
+
+            HasParseErrors = true;
 
             return new ParserException(message, what, lineNumber);
         }

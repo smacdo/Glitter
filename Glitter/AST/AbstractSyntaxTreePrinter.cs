@@ -19,7 +19,7 @@ using System.Text;
 
 namespace Glitter.AST
 {
-    public class AbstractSyntaxTreePrinter : IAbstractSyntaxNodeVisitor<string>
+    public class AbstractSyntaxTreePrinter : IExpressionNodeVisitor<string>
     {
         public string Print(ExpressionNode expression)
         {
@@ -49,6 +49,16 @@ namespace Glitter.AST
         public string VisitUnaryNode(UnaryNode node)
         {
             return Parenthesize(node.Operator.Lexeme, node.Right);
+        }
+
+        public string VisitVariableNode(VariableNode node)
+        {
+            return Parenthesize(node.VariableName);
+        }
+
+        public string VisitAssignmentNode(AssignmentNode node)
+        {
+            return Parenthesize("=");
         }
 
         private string Parenthesize(string name, params ExpressionNode[] nodes)

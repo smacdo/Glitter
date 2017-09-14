@@ -109,6 +109,8 @@ namespace Glitter.Tests
         private Token[] ScanAll(string text)
         {
             var s = new Scanner(text);
+            s.IgnoreWhitespace = false;
+
             return s.ScanTokens().ToArray();
         }
 

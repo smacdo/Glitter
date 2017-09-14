@@ -77,4 +77,12 @@ namespace Glitter
         {
         }
     }
+
+    public class RuntimeException : InterpreterException
+    {
+        public RuntimeException(string message, string what, int line)
+            : base(message, what, line)
+        {
+        }
+    }
 }

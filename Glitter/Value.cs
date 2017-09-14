@@ -14,10 +14,12 @@
  * limitations under the License.
  */
 using System;
+using System.Collections.Generic;
+using System.Text;
 
-namespace Glitter.AST
+namespace Glitter
 {
-    public abstract class AbstractSyntaxNode
+    public struct Value
     {
     }
 }

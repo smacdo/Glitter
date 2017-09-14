@@ -26,6 +26,8 @@ namespace Glitter
     /// </summary>
     public class Interpreter
     {
+        private Environment _environment = new Environment();
+
         public EventHandler<InterpreterExceptionEventArgs> OnException { get; set; }
         public TextReader StandardIn { get; set; }
         public TextWriter StandardOut { get; set; }
@@ -45,23 +47,22 @@ namespace Glitter
                 var parser = new Parser(tokens);
                 parser.OnError += OnParserError;
 
-                var root = parser.Parse();
+                var statements = parser.Parse();
 
-                // Temporary debug print.
-                if (root == null)
+                if (!parser.HasParseErrors)
                 {
-                    Console.Error.WriteLine("Parse result was null!");
-                }
-                else
-                {
-                    Console.WriteLine(new AbstractSyntaxTreePrinter().Print(root));
-                }
-                
+                    try
+                    {
+                        var evaluator = new AbstractSyntaxTreeEvaluator(statements, _environment);
+                        var result = evaluator.Evaluate();
 
-                //foreach (var token in tokens)
-                //{
-                //    WriteLine(token.ToString());
-                //}
+                        //Console.WriteLine(Stringify(result));
+                    }
+                    catch (RuntimeException e)
+                    {
+                        Console.WriteLine(e.ToString());
+                    }
+                }
             }
             catch (InterpreterException e)
             {
@@ -69,6 +70,18 @@ namespace Glitter
                 {
                     throw;
                 }
+            }
+        }
+
+        private void PrintSyntaxTree(ExpressionNode root)
+        {
+            if (root == null)
+            {
+                Console.Error.WriteLine("Parse result was null!");
+            }
+            else
+            {
+                Console.WriteLine(new AbstractSyntaxTreePrinter().Print(root));
             }
         }
 

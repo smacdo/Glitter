@@ -28,7 +28,6 @@ namespace Glitter
         private int _startIndex = 0;
         private int _currentIndex = 0;
         private int _lineNumber = 0;
-        private bool _ignoreWhitespace = true;
 
         public Scanner(string source)
         {
@@ -40,6 +39,8 @@ namespace Glitter
             get { return _source.Substring(_startIndex, _currentIndex - _startIndex); }
         }
 
+        public bool IgnoreWhitespace { get; set; } = true;
+
         public IEnumerable<Token> ScanTokens()
         {
             while (!IsAtEnd())
@@ -48,7 +49,7 @@ namespace Glitter
                 _startIndex = _currentIndex;
                 var nextToken = ScanNextToken();
 
-                if (!_ignoreWhitespace || nextToken.Type != TokenType.Whitespace)
+                if (!IgnoreWhitespace || nextToken.Type != TokenType.Whitespace)
                 {
                     yield return nextToken;
                 }
@@ -340,22 +341,22 @@ namespace Glitter
 
         private static Dictionary<string, TokenType> Keywords = new Dictionary<string, TokenType>()
         {
-            { "And", TokenType.And },
-            { "Base", TokenType.Base },
-            { "Class", TokenType.Class },
-            { "Else", TokenType.Else },
-            { "False", TokenType.False },
-            { "Function", TokenType.Function },
-            { "For", TokenType.For },
-            { "If", TokenType.If },
-            { "Or", TokenType.Or },
-            { "Undefined", TokenType.Undefined },
-            { "Print", TokenType.Print },
-            { "Return", TokenType.Return },
-            { "This", TokenType.This },
-            { "True", TokenType.True },
-            { "Var", TokenType.Var },
-            { "While", TokenType.While },
+            { "and", TokenType.And },
+            { "base", TokenType.Base },
+            { "class", TokenType.Class },
+            { "else", TokenType.Else },
+            { "false", TokenType.False },
+            { "function", TokenType.Function },
+            { "for", TokenType.For },
+            { "if", TokenType.If },
+            { "or", TokenType.Or },
+            { "undefined", TokenType.Undefined },
+            { "print", TokenType.Print },
+            { "return", TokenType.Return },
+            { "this", TokenType.This },
+            { "true", TokenType.True },
+            { "var", TokenType.Var },
+            { "while", TokenType.While },
         };
     }
 }

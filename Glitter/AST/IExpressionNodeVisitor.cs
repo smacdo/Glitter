@@ -19,11 +19,13 @@ using System.Text;
 
 namespace Glitter.AST
 {
-    public interface IAbstractSyntaxNodeVisitor<T>
+    public interface IExpressionNodeVisitor<T>
     {
-        T VisitBinaryExpressionNode(BinaryExpressionNode node);
-        T VisitGroupingNode(GroupingNode node);
-        T VisitLiteralNode(LiteralNode node);
+        T VisitBinaryExpressionNode(BinaryExpressionNode binaryNode);
+        T VisitGroupingNode(GroupingNode groupNode);
+        T VisitLiteralNode(LiteralNode literalNode);
         T VisitUnaryNode(UnaryNode unaryNode);
+        T VisitVariableNode(VariableNode node);
+        T VisitAssignmentNode(AssignmentNode node);
     }
 }
