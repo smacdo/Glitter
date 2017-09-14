@@ -37,10 +37,15 @@ namespace Glitter.AST
         {
             foreach (var statement in _statements)
             {
-                statement.Visit(this);
+                Execute(statement);
             }
 
             return null;
+        }
+
+        private void Execute(Statement statement)
+        {
+            statement.Visit(this);
         }
 
         public object VisitExpressionStatement(ExpressionStatement statement)
@@ -60,6 +65,31 @@ namespace Glitter.AST
 
             _environment.Define(statement.Name, initialValue);
             return null;
+        }
+
+        public object VisitBlock(Block block)
+        {
+            ExecuteBlock(block.Statements, new Environment(_environment));
+            return null;
+        }
+
+        private void ExecuteBlock(IList<Statement> statements, Environment environment)
+        {
+            var previous = _environment;
+
+            try
+            {
+                _environment = environment;
+
+                foreach (var statement in statements)
+                {
+                    Execute(statement);
+                }
+            }
+            finally
+            {
+                _environment = previous;
+            }
         }
 
         public object VisitPrintStatement(PrintStatement statement)

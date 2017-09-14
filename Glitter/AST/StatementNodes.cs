@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 using System;
+using System.Collections.Generic;
 
 namespace Glitter.AST
 {
@@ -52,6 +53,21 @@ namespace Glitter.AST
         public override T Visit<T>(IStatementNodeVisitor<T> visitor)
         {
             return visitor.VisitVariableDeclarationStatement(this);
+        }
+    }
+
+    public class Block : Statement
+    {
+        public Block(IList<Statement> statements)
+        {
+            Statements = statements ?? throw new ArgumentNullException(nameof(statements));
+        }
+
+        public IList<Statement> Statements { get; }
+
+        public override T Visit<T>(IStatementNodeVisitor<T> visitor)
+        {
+            return visitor.VisitBlock(this);
         }
     }
 

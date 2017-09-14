@@ -24,5 +24,6 @@ namespace Glitter.AST
         T VisitPrintStatement(PrintStatement statement);
         T VisitExpressionStatement(ExpressionStatement statement);
         T VisitVariableDeclarationStatement(VariableDeclarationStatement statement);
+        T VisitBlock(Block blockStatemnet);
     }
 }

@@ -132,10 +132,15 @@ namespace Glitter
         /// <summary>
         ///  Statement -> ExpressionStatement
         ///             | PrintStatement
+        ///             | Block
         /// </summary>
         private Statement Statement()
         {
-            if (AdvanceIfCurrentTokenIsOneOf(TokenType.Print))
+            if (AdvanceIfCurrentTokenIsOneOf(TokenType.LeftBrace))
+            {
+                return new Block(Block());
+            }
+            else if (AdvanceIfCurrentTokenIsOneOf(TokenType.Print))
             {
                 return PrintStatement();
             }
@@ -147,10 +152,22 @@ namespace Glitter
             }
         }
 
+        private IList<Statement> Block()
+        {
+            var statements = new List<Statement>();
+
+            while (!IsCurrentTokenA(TokenType.RightBrace) && !TokenStreamEnded)
+            {
+                statements.Add(Declarations());
+            }
+
+            Consume(TokenType.RightBrace, "Expected } after block");
+            return statements;
+        }
+
         /// <summary>
         ///  PrintStatement -> "print" expression ";"
         /// </summary>
-        /// <returns></returns>
         private Statement PrintStatement()
         {
             var expression = Expression();

@@ -25,6 +25,16 @@ namespace Glitter
     public class Environment
     {
         private Dictionary<string, object> _values = new Dictionary<string, object>();
+        private Environment _enclosing = null;
+
+        public Environment()
+        {
+        }
+
+        public Environment(Environment enclosing)
+        {
+            _enclosing = enclosing ?? throw new ArgumentNullException(nameof(enclosing));
+        }
 
         /// <summary>
         ///  Define a new variable with a name and value.
@@ -41,7 +51,14 @@ namespace Glitter
         {
             if (!_values.TryGetValue(name, out object value))
             {
-                throw new RuntimeException("Undefined variable", name, 0);
+                if (_enclosing != null)
+                {
+                    return _enclosing.Get(name);
+                }
+                else
+                {
+                    throw new RuntimeException("Undefined variable", name, 0);
+                }
             }
 
             return value;
@@ -52,6 +69,10 @@ namespace Glitter
             if (_values.ContainsKey(variableName))
             {
                 _values[variableName] = value;
+            }
+            else if (_enclosing != null)
+            {
+                _enclosing.Set(variableName, value);
             }
             else
             {
