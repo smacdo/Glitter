@@ -18,11 +18,11 @@ using System.Collections.Generic;
 using System.Text;
 using Glitter.AST;
 
-namespace Glitter
+namespace Glitter.AstInterpreter
 {
     public interface ICallable
     {
         int Arity { get; }
-        object Call(AbstractSyntaxTreeEvaluator evaluator, IList<object> arguments);
+        object Call(AbstractSyntaxTreeInterpreter evaluator, IList<object> arguments);
     }
 }

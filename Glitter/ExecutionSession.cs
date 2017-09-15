@@ -18,13 +18,14 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using Glitter.AST;
+using Glitter.AstInterpreter;
 
 namespace Glitter
 {
     /// <summary>
     ///  Glitter run time interpreter.
     /// </summary>
-    public class Interpreter
+    public class ExecutionSession
     {
         private Environment _environment = new Environment();
 
@@ -32,7 +33,7 @@ namespace Glitter
         public TextReader StandardIn { get; set; }
         public TextWriter StandardOut { get; set; }
 
-        public Interpreter()
+        public ExecutionSession()
         {
             NativeFunctions.Register(_environment);
         }
@@ -58,7 +59,7 @@ namespace Glitter
                 {
                     try
                     {
-                        var evaluator = new AbstractSyntaxTreeEvaluator(statements, _environment);
+                        var evaluator = new AbstractSyntaxTreeInterpreter(statements, _environment);
                         var result = evaluator.Execute();
 
                         //Console.WriteLine(Stringify(result));
@@ -78,7 +79,7 @@ namespace Glitter
             }
         }
 
-        private void PrintSyntaxTree(ExpressionNode root)
+        private void PrintSyntaxTree(Expression root)
         {
             if (root == null)
             {

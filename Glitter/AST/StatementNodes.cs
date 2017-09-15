@@ -25,12 +25,12 @@ namespace Glitter.AST
 
     public class ExpressionStatement : Statement
     {
-        public ExpressionStatement(ExpressionNode expression)
+        public ExpressionStatement(Expression expression)
         {
             Expression = expression ?? throw new ArgumentNullException(nameof(expression));
         }
 
-        public ExpressionNode Expression { get; }
+        public Expression Expression { get; }
 
         public override T Visit<T>(IStatementNodeVisitor<T> visitor)
         {
@@ -46,20 +46,20 @@ namespace Glitter.AST
         /// <param name="condition">Required if conditional expression.</param>
         /// <param name="thenBranch">Required then statement.</param>
         /// <param name="elseBranch">Optional else statement.</param>
-        public IfStatement(ExpressionNode condition, Statement thenBranch, Statement elseBranch)
+        public IfStatement(Expression condition, Statement thenBranch, Statement elseBranch)
         {
             Condition = condition ?? throw new ArgumentNullException(nameof(condition));
             ThenBranch = thenBranch ?? throw new ArgumentNullException(nameof(thenBranch));
             ElseBranch = elseBranch;
         }
 
-        public ExpressionNode Condition { get; }
+        public Expression Condition { get; }
         public Statement ThenBranch { get; }
         public Statement ElseBranch { get; }
 
         public override T Visit<T>(IStatementNodeVisitor<T> visitor)
         {
-            return visitor.VisitIfStatement(this);
+            return visitor.VisitIf(this);
         }
     }
 
@@ -70,42 +70,42 @@ namespace Glitter.AST
         /// </summary>
         /// <param name="condition">Required conditional expression.</param>
         /// <param name="body">Required statement body.</param>
-        public WhileStatement(ExpressionNode condition, Statement body)
+        public WhileStatement(Expression condition, Statement body)
         {
             Condition = condition ?? throw new ArgumentNullException(nameof(condition));
             Body = body ?? throw new ArgumentNullException(nameof(body));
         }
 
-        public ExpressionNode Condition { get; }
+        public Expression Condition { get; }
         public Statement Body { get; }
 
         public override T Visit<T>(IStatementNodeVisitor<T> visitor)
         {
-            return visitor.VisitWhileStatement(this);
+            return visitor.VisitWhile(this);
         }
     }
 
     public class VariableDeclarationStatement : Statement
     {
         // TODO: Don't take token just take name?
-        public VariableDeclarationStatement(Token name, ExpressionNode initializerExpression)
+        public VariableDeclarationStatement(Token name, Expression initializerExpression)
         {
             Name = name.LiteralIdentifier;
             InitializerExpression = initializerExpression;
         }
 
         public string Name { get; }
-        public ExpressionNode InitializerExpression { get; }
+        public Expression InitializerExpression { get; }
 
         public override T Visit<T>(IStatementNodeVisitor<T> visitor)
         {
-            return visitor.VisitVariableDeclarationStatement(this);
+            return visitor.VisitVariableDeclaration(this);
         }
     }
 
-    public class FunctionDeclaration : Statement
+    public class FunctionDeclarationStatement : Statement
     {
-        public FunctionDeclaration(string name, IList<string> parameters, IList<Statement> body)
+        public FunctionDeclarationStatement(string name, IList<string> parameters, IList<Statement> body)
         {
             Name = name ?? throw new ArgumentNullException(nameof(name));
             Parameters = parameters ?? throw new ArgumentNullException(nameof(parameters));
@@ -122,9 +122,9 @@ namespace Glitter.AST
         }
     }
 
-    public class Block : Statement
+    public class BlockStatemnt : Statement
     {
-        public Block(IList<Statement> statements)
+        public BlockStatemnt(IList<Statement> statements)
         {
             Statements = statements ?? throw new ArgumentNullException(nameof(statements));
         }
@@ -139,12 +139,12 @@ namespace Glitter.AST
 
     public class ReturnStatement : Statement
     {
-        public ReturnStatement(ExpressionNode expression)
+        public ReturnStatement(Expression expression)
         {
             Expression = expression;
         }
 
-        public ExpressionNode Expression { get; }
+        public Expression Expression { get; }
 
         public override T Visit<T>(IStatementNodeVisitor<T> visitor)
         {
@@ -154,16 +154,16 @@ namespace Glitter.AST
 
     public class PrintStatement : Statement
     {
-        public PrintStatement(ExpressionNode expression)
+        public PrintStatement(Expression expression)
         {
             Expression = expression;
         }
 
-        public ExpressionNode Expression { get; }
+        public Expression Expression { get; }
 
         public override T Visit<T>(IStatementNodeVisitor<T> visitor)
         {
-            return visitor.VisitPrintStatement(this);
+            return visitor.VisitPrint(this);
         }
     }
 }

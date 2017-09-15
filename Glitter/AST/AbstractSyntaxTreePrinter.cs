@@ -19,24 +19,24 @@ using System.Text;
 
 namespace Glitter.AST
 {
-    public class AbstractSyntaxTreePrinter : IExpressionNodeVisitor<string>
+    public class AbstractSyntaxTreePrinter : IExpressionVisitor<string>
     {
-        public string Print(ExpressionNode expression)
+        public string Print(Expression expression)
         {
             return expression.Visit(this);
         }
 
-        public string VisitBinaryExpressionNode(BinaryExpressionNode node)
+        public string VisitBinary(BinaryExpression node)
         {
             return Parenthesize(node.Operator.Lexeme, node.Left, node.Right);
         }
 
-        public string VisitGroupingNode(GroupingNode node)
+        public string VisitGrouping(GroupingExpression node)
         {
             return Parenthesize("group", node.Node);
         }
 
-        public string VisitLiteralNode(LiteralNode node)
+        public string VisitLiteral(LiteralExpression node)
         {
             if (node.Value == null)
             {
@@ -46,22 +46,22 @@ namespace Glitter.AST
             return node.Value.ToString();
         }
 
-        public string VisitUnaryNode(UnaryNode node)
+        public string VistUnary(UnaryExpression node)
         {
             return Parenthesize(node.Operator.Lexeme, node.Right);
         }
 
-        public string VisitVariableNode(VariableNode node)
+        public string VisitVariable(VariableExpression node)
         {
             throw new NotImplementedException();
         }
 
-        public string VisitAssignmentNode(AssignmentNode node)
+        public string VisitAssignment(AssignmentExpression node)
         {
             throw new NotImplementedException();
         }
 
-        private string Parenthesize(string name, params ExpressionNode[] nodes)
+        private string Parenthesize(string name, params Expression[] nodes)
         {
             var builder = new StringBuilder();
             builder.Append("(").Append(name);
@@ -76,12 +76,12 @@ namespace Glitter.AST
             return builder.ToString();
         }
 
-        public string VisitLogicalNode(LogicalExpressionNode node)
+        public string VisitLogical(LogicalExpression node)
         {
             throw new NotImplementedException();
         }
 
-        public string VisitCallNode(CallNode node)
+        public string VistiCall(CallExpression node)
         {
             throw new NotImplementedException();
         }

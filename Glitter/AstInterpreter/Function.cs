@@ -18,19 +18,19 @@ using System.Collections.Generic;
 using System.Text;
 using Glitter.AST;
 
-namespace Glitter
+namespace Glitter.AstInterpreter
 {
     // TODO: This hsould be in AST since it contains AST code and is used by the AST evaluator.
     //  (eg its not generic runtime code).
     // 
     // Plan: move AbstractSyntaxTreeEvaluator to Interpreter (rename old Interpreter to something else like
     //   InterpreterRunner?), place it in Interpreter namespace. Move this class over into that namespace.
-    public class FunctionDefinition : ICallable
+    public class Function : ICallable
     {
-        private FunctionDeclaration _declaration;
+        private FunctionDeclarationStatement _declaration;
         private Environment _closure;
 
-        public FunctionDefinition(FunctionDeclaration declaration, Environment closure)
+        public Function(FunctionDeclarationStatement declaration, Environment closure)
         {
             _declaration = declaration ?? throw new ArgumentNullException(nameof(declaration));
             _closure = closure ?? throw new ArgumentNullException(nameof(closure));
@@ -38,7 +38,7 @@ namespace Glitter
 
         public int Arity => _declaration.Parameters.Count;
 
-        public object Call(AbstractSyntaxTreeEvaluator evaluator, IList<object> arguments)
+        public object Call(AbstractSyntaxTreeInterpreter evaluator, IList<object> arguments)
         {
             var environment = new Environment(_closure);
 

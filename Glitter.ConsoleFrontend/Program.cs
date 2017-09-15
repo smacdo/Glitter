@@ -50,7 +50,7 @@ namespace Glitter.ConsoleFrontend
         {
             // TODO: Handle file load error.
             var code = File.ReadAllText(fileName);
-            var interpreter = new Interpreter()
+            var interpreter = new ExecutionSession()
             {
                 OnException = HandleException,
                 StandardIn = Console.In,
@@ -62,7 +62,7 @@ namespace Glitter.ConsoleFrontend
 
         private static void RunInteractive()
         {
-            var interpreter = new Interpreter()
+            var interpreter = new ExecutionSession()
             {
                 OnException = HandleException,
                 StandardIn = Console.In,

@@ -149,7 +149,7 @@ namespace Glitter
             Consume(TokenType.LeftBrace, "Expected { before " + expectedFunctionKind + "body"); // TODO: string $.
             var body = Block();
 
-            return new FunctionDeclaration(nameToken.LiteralIdentifier, parameters, body);
+            return new FunctionDeclarationStatement(nameToken.LiteralIdentifier, parameters, body);
         }
 
         /// <summary>
@@ -158,7 +158,7 @@ namespace Glitter
         private Statement VariableDeclaration()
         {
             var name = Consume(TokenType.Identifier, "Expected variable name");
-            ExpressionNode initializer = null;
+            Expression initializer = null;
 
             if (AdvanceIfCurrentTokenIsOneOf(TokenType.Equal))
             {
@@ -182,7 +182,7 @@ namespace Glitter
         {
             if (AdvanceIfCurrentTokenIsOneOf(TokenType.LeftBrace))
             {
-                return new Block(Block());
+                return new BlockStatemnt(Block());
             }
             else if (AdvanceIfCurrentTokenIsOneOf(TokenType.If))
             {
@@ -217,7 +217,7 @@ namespace Glitter
         /// </summary>
         private Statement ReturnStatement()
         {
-            ExpressionNode value = null;
+            Expression value = null;
 
             // A return expression is optional. If the next token is not a semi-colon then it can the parser will
             // assume there is a return expression to be parsed.
@@ -305,7 +305,7 @@ namespace Glitter
             }
 
             // Read the conditional clause.
-            ExpressionNode conditional = null;
+            Expression conditional = null;
 
             if (!IsCurrentTokenA(TokenType.Semicolon))
             {
@@ -315,7 +315,7 @@ namespace Glitter
             Consume(TokenType.Semicolon, "Expected ; after loop conditional");
 
             // Read the increment caluse.
-            ExpressionNode increment = null;
+            Expression increment = null;
 
             if (!IsCurrentTokenA(TokenType.RightParen))
             {
@@ -334,7 +334,7 @@ namespace Glitter
             // statement that holds the while body statement followed by the increment.
             if (increment != null)
             {
-                body = new Block(new List<Statement>()
+                body = new BlockStatemnt(new List<Statement>()
                 {
                     body,
                     new ExpressionStatement(increment)
@@ -345,7 +345,7 @@ namespace Glitter
             // conditional expression always default to true.
             if (conditional == null)
             {
-                conditional = new LiteralNode(true);
+                conditional = new LiteralExpression(true);
             }
 
             // Construct a while statement with the conditional from the for loop.
@@ -355,7 +355,7 @@ namespace Glitter
             // another block with the initializer first and the while second.
             if (initializer != null)
             {
-                body = new Block(new List<Statement>()
+                body = new BlockStatemnt(new List<Statement>()
                 {
                     initializer,
                     body
@@ -404,7 +404,7 @@ namespace Glitter
         /// <summary>
         ///  Expression -> Assignment
         /// </summary>
-        private ExpressionNode Expression()
+        private Expression Expression()
         {
             return Assignment();
         }
@@ -412,7 +412,7 @@ namespace Glitter
         /// <summary>
         ///  Assignment -> Identifier "=" Assignment | Or
         /// </summary>
-        private ExpressionNode Assignment()
+        private Expression Assignment()
         {
             // Evaluate the left side of the (potential) assignment expression. Once the lhs expression has been
             // read and if the following token is the "=" operator then treat this as an assignment expression.
@@ -428,10 +428,10 @@ namespace Glitter
                 var equalsToken = PreviousToken;
                 var rightValue = Assignment();
 
-                if (leftValue is VariableNode leftVarValue)
+                if (leftValue is VariableExpression leftVarValue)
                 {
                     var varName = leftVarValue.VariableName;
-                    return new AssignmentNode(varName, rightValue);
+                    return new AssignmentExpression(varName, rightValue);
                 }
                 else
                 {
@@ -449,7 +449,7 @@ namespace Glitter
         /// <summary>
         ///  Or -> Or | ("or" LogicAnd)*
         /// </summary>
-        private ExpressionNode Or()
+        private Expression Or()
         {
             var expression = And();
 
@@ -457,7 +457,7 @@ namespace Glitter
             {
                 var @operator = PreviousToken;
                 var right = And();
-                expression = new LogicalExpressionNode(expression, @operator, right);
+                expression = new LogicalExpression(expression, @operator, right);
             }
 
             return expression;
@@ -466,7 +466,7 @@ namespace Glitter
         /// <summary>
         ///  And -> Equality ("and" Equality)*
         /// </summary>
-        private ExpressionNode And()
+        private Expression And()
         {
             var expression = Equality();
 
@@ -474,7 +474,7 @@ namespace Glitter
             {
                 var @operator = PreviousToken;
                 var right = Equality();
-                expression = new LogicalExpressionNode(expression, @operator, right);
+                expression = new LogicalExpression(expression, @operator, right);
             }
 
             return expression;
@@ -483,7 +483,7 @@ namespace Glitter
         /// <summary>
         ///  Equality -> Comparison (("!" | "==") Comparison)*
         /// </summary>
-        private ExpressionNode Equality()
+        private Expression Equality()
         {
             var expression = Comparison();
 
@@ -492,7 +492,7 @@ namespace Glitter
                 var @operator = PreviousToken;
                 var right = Expression();
 
-                expression = new BinaryExpressionNode(expression, @operator, right);
+                expression = new BinaryExpression(expression, @operator, right);
             }
 
             return expression;
@@ -501,7 +501,7 @@ namespace Glitter
         /// <summary>
         ///  Comparison -> Addition ((">" | ">=" | "&gt" | "&gt;=") Addition)*
         /// </summary>
-        private ExpressionNode Comparison()
+        private Expression Comparison()
         {
             var expression = Addition();
 
@@ -514,13 +514,13 @@ namespace Glitter
             {
                 var @operator = PreviousToken;
                 var right = Addition();
-                expression = new BinaryExpressionNode(expression, @operator, right);
+                expression = new BinaryExpression(expression, @operator, right);
             }
 
             return expression;
         }
 
-        private ExpressionNode Addition()
+        private Expression Addition()
         {
             var expression = Multiplication();
 
@@ -528,13 +528,13 @@ namespace Glitter
             {
                 var @operator = PreviousToken;
                 var right = Multiplication();
-                expression = new BinaryExpressionNode(expression, @operator, right);
+                expression = new BinaryExpression(expression, @operator, right);
             }
 
             return expression;
         }
 
-        private ExpressionNode Multiplication()
+        private Expression Multiplication()
         {
             var expression = Unary();
 
@@ -542,7 +542,7 @@ namespace Glitter
             {
                 var @operator = PreviousToken;
                 var right = Unary();
-                expression = new BinaryExpressionNode(expression, @operator, right);
+                expression = new BinaryExpression(expression, @operator, right);
             }
 
             return expression;
@@ -551,13 +551,13 @@ namespace Glitter
         /// <summary>
         ///  Unary -> ("!" | "-") Unary | Call
         /// </summary>
-        private ExpressionNode Unary()
+        private Expression Unary()
         {
             if (AdvanceIfCurrentTokenIsOneOf(TokenType.Bang, TokenType.Slash))
             {
                 var @operator = PreviousToken;
                 var right = Unary();
-                return new UnaryNode(@operator, right);
+                return new UnaryExpression(@operator, right);
             }
 
             return Call();
@@ -566,7 +566,7 @@ namespace Glitter
         /// <summary>
         ///  Call -> Primary ("(" arguments? ")")* ;
         /// </summary>
-        private ExpressionNode Call()
+        private Expression Call()
         {
             var expression = Primary();
 
@@ -589,9 +589,9 @@ namespace Glitter
             return expression;
         }
 
-        private ExpressionNode FinishCall(ExpressionNode callee)
+        private Expression FinishCall(Expression callee)
         {
-            var arguments = new List<ExpressionNode>();
+            var arguments = new List<Expression>();
 
             if (!IsCurrentTokenA(TokenType.RightParen))
             {
@@ -616,13 +616,13 @@ namespace Glitter
                     CurrentToken.LineNumber);
             }
 
-            return new CallNode(callee, arguments);
+            return new CallExpression(callee, arguments);
         }
 
         /// <summary>
         ///  Arguments -> Expression ( "," expression)*
         /// </summary>
-        private ExpressionNode Arguments()
+        private Expression Arguments()
         {
             return null;
         }
@@ -631,37 +631,37 @@ namespace Glitter
         ///  Primary -> NUMBER | STRING | "false" | "true" | "undefined" | "(" expression ")" | IDENTIFIER
         /// </summary>
         /// <returns></returns>
-        private ExpressionNode Primary()
+        private Expression Primary()
         {
             if (AdvanceIfCurrentTokenIsOneOf(TokenType.Identifier))
             {
-                return new VariableNode(PreviousToken);
+                return new VariableExpression(PreviousToken);
             }
             else if (AdvanceIfCurrentTokenIsOneOf(TokenType.False))
             {
-                return new LiteralNode(false);
+                return new LiteralExpression(false);
             }
             else if (AdvanceIfCurrentTokenIsOneOf(TokenType.True))
             {
-                return new LiteralNode(true);
+                return new LiteralExpression(true);
             }
             else if (AdvanceIfCurrentTokenIsOneOf(TokenType.Undefined))
             {
-                return new LiteralNode(null);
+                return new LiteralExpression(null);
             }
             else if (AdvanceIfCurrentTokenIsOneOf(TokenType.Number))
             {
-                return new LiteralNode(PreviousToken.LiteralNumber);
+                return new LiteralExpression(PreviousToken.LiteralNumber);
             }
             else if (AdvanceIfCurrentTokenIsOneOf(TokenType.String))
             {
-                return new LiteralNode(PreviousToken.LiteralString);
+                return new LiteralExpression(PreviousToken.LiteralString);
             }
             else if (AdvanceIfCurrentTokenIsOneOf(TokenType.LeftParen))
             {
                 var expression = Expression();
                 Consume(TokenType.RightParen, "Expected ')' after expression");
-                return new GroupingNode(expression);
+                return new GroupingExpression(expression);
             }
 
             throw RaiseError("Expected expression", CurrentToken.ToString(), CurrentToken.LineNumber);

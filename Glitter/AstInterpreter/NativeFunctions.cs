@@ -15,11 +15,10 @@
  */
 using System;
 using System.Collections.Generic;
-using System.Text;
-using Glitter.AST;
 
-namespace Glitter
+namespace Glitter.AstInterpreter
 {
+    // TODO: Move out of namespace into Glitter.Runtime
     public static class NativeFunctions
     {
         public static void Register(Environment env)
@@ -44,7 +43,7 @@ namespace Glitter
 
         public int Arity => 0;
 
-        public object Call(AbstractSyntaxTreeEvaluator evaluator, IList<object> arguments)
+        public object Call(AbstractSyntaxTreeInterpreter evaluator, IList<object> arguments)
         {
             return DateTime.Now.Subtract(DateTime.MinValue).TotalSeconds;
         }

@@ -13,21 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace Glitter.AST
 {
     public interface IStatementNodeVisitor<T>
     {
-        T VisitPrintStatement(PrintStatement statement);
+        T VisitPrint(PrintStatement statement);
         T VisitExpressionStatement(ExpressionStatement statement);
-        T VisitVariableDeclarationStatement(VariableDeclarationStatement statement);
-        T VisitBlock(Block statement);
-        T VisitIfStatement(IfStatement statement);
-        T VisitWhileStatement(WhileStatement statement);
-        T VisitFunctionDeclaration(FunctionDeclaration statement);
+        T VisitVariableDeclaration(VariableDeclarationStatement statement);
+        T VisitBlock(BlockStatemnt statement);
+        T VisitIf(IfStatement statement);
+        T VisitWhile(WhileStatement statement);
+        T VisitFunctionDeclaration(FunctionDeclarationStatement statement);
         T VisitReturn(ReturnStatement staetment);
     }
 }

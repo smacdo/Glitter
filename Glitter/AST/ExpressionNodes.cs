@@ -21,18 +21,18 @@ namespace Glitter.AST
     /// <summary>
     ///  Base class for expression nodes.
     /// </summary>
-    public abstract class ExpressionNode : AbstractSyntaxNode
+    public abstract class Expression : AbstractSyntaxNode
     {
-        public abstract T Visit<T>(IExpressionNodeVisitor<T> visitor);
+        public abstract T Visit<T>(IExpressionVisitor<T> visitor);
     }
 
     /// <summary>
     ///  An expression node with a single operator with a left hand side and a right hand side.
     /// </summary>
-    public class BinaryExpressionNode : ExpressionNode
+    public class BinaryExpression : Expression
     {
         // TODO: Token -> TokenType -> OperatorType
-        public BinaryExpressionNode(ExpressionNode left, Token @operator, ExpressionNode right)
+        public BinaryExpression(Expression left, Token @operator, Expression right)
         {
             Left = left ?? throw new ArgumentNullException(nameof(left));
             Right = right ?? throw new ArgumentNullException(nameof(right));
@@ -45,19 +45,19 @@ namespace Glitter.AST
             Operator = @operator;
         }
 
-        public ExpressionNode Left { get; private set; }
+        public Expression Left { get; private set; }
         public Token Operator { get; private set; }
-        public ExpressionNode Right { get; private set; }
+        public Expression Right { get; private set; }
 
-        public override T Visit<T>(IExpressionNodeVisitor<T> visitor)
+        public override T Visit<T>(IExpressionVisitor<T> visitor)
         {
-            return visitor.VisitBinaryExpressionNode(this);
+            return visitor.VisitBinary(this);
         }
     }
-    public class LogicalExpressionNode : ExpressionNode
+    public class LogicalExpression : Expression
     {
         // TODO: Token -> TokenType -> OperatorType
-        public LogicalExpressionNode(ExpressionNode left, Token @operator, ExpressionNode right)
+        public LogicalExpression(Expression left, Token @operator, Expression right)
         {
             Left = left ?? throw new ArgumentNullException(nameof(left));
             Right = right ?? throw new ArgumentNullException(nameof(right));
@@ -70,49 +70,49 @@ namespace Glitter.AST
             Operator = @operator;
         }
 
-        public ExpressionNode Left { get; private set; }
+        public Expression Left { get; private set; }
         public Token Operator { get; private set; }
-        public ExpressionNode Right { get; private set; }
+        public Expression Right { get; private set; }
 
-        public override T Visit<T>(IExpressionNodeVisitor<T> visitor)
+        public override T Visit<T>(IExpressionVisitor<T> visitor)
         {
-            return visitor.VisitLogicalNode(this);
+            return visitor.VisitLogical(this);
         }
     }
 
-    public class GroupingNode : ExpressionNode
+    public class GroupingExpression : Expression
     {
-        public GroupingNode(ExpressionNode node)
+        public GroupingExpression(Expression node)
         {
             Node = node ?? throw new ArgumentNullException(nameof(node));
         }
 
-        public ExpressionNode Node { get; private set; }
+        public Expression Node { get; private set; }
 
-        public override T Visit<T>(IExpressionNodeVisitor<T> visitor)
+        public override T Visit<T>(IExpressionVisitor<T> visitor)
         {
-            return visitor.VisitGroupingNode(this);
+            return visitor.VisitGrouping(this);
         }
     }
 
-    public class LiteralNode : ExpressionNode
+    public class LiteralExpression : Expression
     {
-        public LiteralNode(object @object)
+        public LiteralExpression(object @object)
         {
             Value = @object;
         }
 
         public object Value { get; private set; }
 
-        public override T Visit<T>(IExpressionNodeVisitor<T> visitor)
+        public override T Visit<T>(IExpressionVisitor<T> visitor)
         {
-            return visitor.VisitLiteralNode(this);
+            return visitor.VisitLiteral(this);
         }
     }
 
-    public class UnaryNode : ExpressionNode
+    public class UnaryExpression : Expression
     {
-        public UnaryNode(Token @operator, ExpressionNode right)
+        public UnaryExpression(Token @operator, Expression right)
         {
             Right = right ?? throw new ArgumentNullException(nameof(right));
 
@@ -125,61 +125,61 @@ namespace Glitter.AST
         }
 
         public Token Operator { get; private set; }
-        public ExpressionNode Right { get; private set; }
+        public Expression Right { get; private set; }
 
-        public override T Visit<T>(IExpressionNodeVisitor<T> visitor)
+        public override T Visit<T>(IExpressionVisitor<T> visitor)
         {
-            return visitor.VisitUnaryNode(this);
+            return visitor.VistUnary(this);
         }
     }
 
-    public class VariableNode : ExpressionNode
+    public class VariableExpression : Expression
     {
-        public VariableNode(Token name)     // TODO: Don't take token just take name
+        public VariableExpression(Token name)     // TODO: Don't take token just take name
         {
             VariableName = name.LiteralIdentifier;
         }
 
         public string VariableName { get; }
 
-        public override T Visit<T>(IExpressionNodeVisitor<T> visitor)
+        public override T Visit<T>(IExpressionVisitor<T> visitor)
         {
-            return visitor.VisitVariableNode(this);
+            return visitor.VisitVariable(this);
         }
     }
 
-    public class AssignmentNode : ExpressionNode
+    public class AssignmentExpression : Expression
     {
-        public AssignmentNode(string variableName, ExpressionNode value)
+        public AssignmentExpression(string variableName, Expression value)
         {
             VariableName = variableName ?? throw new ArgumentNullException(nameof(variableName));
             Value = value ?? throw new ArgumentNullException(nameof(value));
         }
 
-        public ExpressionNode Value { get; }
+        public Expression Value { get; }
         public string VariableName { get; }
 
-        public override T Visit<T>(IExpressionNodeVisitor<T> visitor)
+        public override T Visit<T>(IExpressionVisitor<T> visitor)
         {
-            return visitor.VisitAssignmentNode(this);
+            return visitor.VisitAssignment(this);
         }
     }
 
-    public class CallNode : ExpressionNode
+    public class CallExpression : Expression
     {
         // TODO: Need to add location tracking to AST for runtime error reporting.
-        public CallNode(ExpressionNode callee, IList<ExpressionNode> arguments)
+        public CallExpression(Expression callee, IList<Expression> arguments)
         {
             Callee = callee ?? throw new ArgumentNullException(nameof(callee));
             Arguments = arguments ?? throw new ArgumentNullException(nameof(arguments));
         }
 
-        public ExpressionNode Callee { get; }
-        public IList<ExpressionNode> Arguments { get; }
+        public Expression Callee { get; }
+        public IList<Expression> Arguments { get; }
 
-        public override T Visit<T>(IExpressionNodeVisitor<T> visitor)
+        public override T Visit<T>(IExpressionVisitor<T> visitor)
         {
-            return visitor.VisitCallNode(this);
+            return visitor.VistiCall(this);
         }
     }
 }

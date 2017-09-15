@@ -19,15 +19,15 @@ using System.Text;
 
 namespace Glitter.AST
 {
-    public interface IExpressionNodeVisitor<T>
+    public interface IExpressionVisitor<T>
     {
-        T VisitBinaryExpressionNode(BinaryExpressionNode binaryNode);
-        T VisitGroupingNode(GroupingNode groupNode);
-        T VisitLiteralNode(LiteralNode literalNode);
-        T VisitUnaryNode(UnaryNode unaryNode);
-        T VisitVariableNode(VariableNode node);
-        T VisitAssignmentNode(AssignmentNode node);
-        T VisitLogicalNode(LogicalExpressionNode node);
-        T VisitCallNode(CallNode node);
+        T VisitBinary(BinaryExpression binaryNode);
+        T VisitGrouping(GroupingExpression groupNode);
+        T VisitLiteral(LiteralExpression literalNode);
+        T VistUnary(UnaryExpression unaryNode);
+        T VisitVariable(VariableExpression node);
+        T VisitAssignment(AssignmentExpression node);
+        T VisitLogical(LogicalExpression node);
+        T VistiCall(CallExpression node);
     }
 }

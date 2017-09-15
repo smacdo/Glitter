@@ -16,19 +16,19 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using Glitter.AST;
 
-namespace Glitter.AST
+namespace Glitter.AstInterpreter
 {
-    // TODO: Move out of AST namespace.
     /// <summary>
     ///  Evaluates an abstract syntax tree using the visitor pattern.
     /// </summary>
-    public class AbstractSyntaxTreeEvaluator : IExpressionNodeVisitor<object>, IStatementNodeVisitor<object>
+    public class AbstractSyntaxTreeInterpreter : IExpressionVisitor<object>, IStatementNodeVisitor<object>
     {
         private Environment _currentEnvironment;
         private IList<Statement> _statements;
 
-        public AbstractSyntaxTreeEvaluator(IList<Statement> statements, Environment environment)
+        public AbstractSyntaxTreeInterpreter(IList<Statement> statements, Environment environment)
         {
             RootEnvironment = environment ?? throw new ArgumentNullException(nameof(environment));
             _currentEnvironment = RootEnvironment;
@@ -58,7 +58,7 @@ namespace Glitter.AST
             return null;
         }
 
-        public object VisitVariableDeclarationStatement(VariableDeclarationStatement statement)
+        public object VisitVariableDeclaration(VariableDeclarationStatement statement)
         {
             // TODO: Return refactor - check that is no pending return request. If so throw exception.
 
@@ -73,15 +73,15 @@ namespace Glitter.AST
             return null;
         }
 
-        public object VisitFunctionDeclaration(FunctionDeclaration declaration)
+        public object VisitFunctionDeclaration(FunctionDeclarationStatement declaration)
         {
             // TODO: Return refactor - check that is no pending return request. If so throw exception.
-            var function = new FunctionDefinition(declaration, _currentEnvironment);
+            var function = new Function(declaration, _currentEnvironment);
             _currentEnvironment.Define(declaration.Name, function);
             return null;
         }
 
-        public object VisitBlock(Block block)
+        public object VisitBlock(BlockStatemnt block)
         {
             // TODO: Return refactor - check that is no pending return request. If so throw exception.
             ExecuteBlock(block.Statements, new Environment(_currentEnvironment));
@@ -107,7 +107,7 @@ namespace Glitter.AST
             }
         }
 
-        public object VisitIfStatement(IfStatement statement)
+        public object VisitIf(IfStatement statement)
         {
             if (IsTruthy(Evaluate(statement.Condition)))
             {
@@ -121,7 +121,7 @@ namespace Glitter.AST
             return null;
         }
 
-        public object VisitWhileStatement(WhileStatement statement)
+        public object VisitWhile(WhileStatement statement)
         {
             while (IsTruthy(Evaluate(statement.Condition)))
             {
@@ -143,7 +143,7 @@ namespace Glitter.AST
             throw new ReturnException(result);
         }
 
-        public object VisitPrintStatement(PrintStatement statement)
+        public object VisitPrint(PrintStatement statement)
         {
             var value = Evaluate(statement.Expression);
             Console.WriteLine(Stringify(value));
@@ -151,7 +151,7 @@ namespace Glitter.AST
             return null;
         }
         
-        private object Evaluate(ExpressionNode expression)
+        private object Evaluate(Expression expression)
         {
             return expression.Visit(this);
         }
@@ -160,7 +160,7 @@ namespace Glitter.AST
         ///  Apply an operator to the left hand and right hand expressions in a binary expression node
         ///  and return the result.
         /// </summary>
-        public object VisitBinaryExpressionNode(BinaryExpressionNode binaryNode)
+        public object VisitBinary(BinaryExpression binaryNode)
         {
             var left = Evaluate(binaryNode.Left);
             var right = Evaluate(binaryNode.Right);
@@ -239,7 +239,7 @@ namespace Glitter.AST
             }
         }
 
-        public object VisitLogicalNode(LogicalExpressionNode node)
+        public object VisitLogical(LogicalExpression node)
         {
             // Evaluate the left side first and then check the logical operation type to enable short circuit
             // behavior.
@@ -280,12 +280,12 @@ namespace Glitter.AST
         ///  Grouping nodes represent a parenthesized expression. Each grouping node has an inner expression
         ///  node that should be evaluated and returned.
         /// </summary>
-        public object VisitGroupingNode(GroupingNode groupNode)
+        public object VisitGrouping(GroupingExpression groupNode)
         {
             return Evaluate(groupNode.Node);
         }
 
-        public object VisitCallNode(CallNode node)
+        public object VistiCall(CallExpression node)
         {
             var callee = Evaluate(node.Callee);
             var arguments = new List<object>(); // TODO: Check arrity when eval so we can use simple
@@ -322,7 +322,7 @@ namespace Glitter.AST
         ///  Literal nodes hold atomic values that do not need to be further evaluated, so they can be returned
         ///  immediately.
         /// </summary>
-        public object VisitLiteralNode(LiteralNode literalNode)
+        public object VisitLiteral(LiteralExpression literalNode)
         {
             return literalNode.Value;
         }
@@ -330,7 +330,7 @@ namespace Glitter.AST
         /// <summary>
         ///  Apply a unary operator on the RHS expression.
         /// </summary>
-        public object VisitUnaryNode(UnaryNode unaryNode)
+        public object VistUnary(UnaryExpression unaryNode)
         {
             var right = Evaluate(unaryNode.Right);
 
@@ -348,12 +348,12 @@ namespace Glitter.AST
             }
         }
 
-        public object VisitVariableNode(VariableNode node)
+        public object VisitVariable(VariableExpression node)
         {
             return _currentEnvironment.Get(node.VariableName);
         }
 
-        public object VisitAssignmentNode(AssignmentNode node)
+        public object VisitAssignment(AssignmentExpression node)
         {
             var value = Evaluate(node.Value);
             _currentEnvironment.Set(node.VariableName, value);
