@@ -106,6 +106,25 @@ namespace Glitter.Tests
             Assert.AreEqual(2.04, a.LiteralNumber);
         }
 
+        [TestMethod]
+        public void Scan_Multiple_Ints()
+        {
+            var results = ScanAll("2 -1 33");
+
+            Assert.AreEqual(TokenType.Number, results[0].Type);
+            Assert.AreEqual(2, results[0].LiteralNumber);
+
+            Assert.AreEqual(TokenType.Whitespace, results[1].Type);
+
+            Assert.AreEqual(TokenType.Number, results[2].Type);
+            Assert.AreEqual(-1, results[2].LiteralNumber);
+
+            Assert.AreEqual(TokenType.Whitespace, results[3].Type);
+
+            Assert.AreEqual(TokenType.Number, results[4].Type);
+            Assert.AreEqual(33, results[4].LiteralNumber);
+        }
+
         private Token[] ScanAll(string text)
         {
             var s = new Scanner(text);

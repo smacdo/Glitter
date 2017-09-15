@@ -16,18 +16,13 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using Glitter.AST;
 
-namespace Glitter.AST
+namespace Glitter
 {
-    public interface IStatementNodeVisitor<T>
+    public interface ICallable
     {
-        T VisitPrintStatement(PrintStatement statement);
-        T VisitExpressionStatement(ExpressionStatement statement);
-        T VisitVariableDeclarationStatement(VariableDeclarationStatement statement);
-        T VisitBlock(Block statement);
-        T VisitIfStatement(IfStatement statement);
-        T VisitWhileStatement(WhileStatement statement);
-        T VisitFunctionDeclaration(FunctionDeclaration statement);
-        T VisitReturn(ReturnStatement staetment);
+        int Arity { get; }
+        object Call(AbstractSyntaxTreeEvaluator evaluator, IList<object> arguments);
     }
 }

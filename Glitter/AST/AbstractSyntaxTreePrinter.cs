@@ -53,12 +53,12 @@ namespace Glitter.AST
 
         public string VisitVariableNode(VariableNode node)
         {
-            return Parenthesize(node.VariableName);
+            throw new NotImplementedException();
         }
 
         public string VisitAssignmentNode(AssignmentNode node)
         {
-            return Parenthesize("=");
+            throw new NotImplementedException();
         }
 
         private string Parenthesize(string name, params ExpressionNode[] nodes)
@@ -74,6 +74,16 @@ namespace Glitter.AST
 
             builder.Append(")");
             return builder.ToString();
+        }
+
+        public string VisitLogicalNode(LogicalExpressionNode node)
+        {
+            throw new NotImplementedException();
+        }
+
+        public string VisitCallNode(CallNode node)
+        {
+            throw new NotImplementedException();
         }
     }
 }

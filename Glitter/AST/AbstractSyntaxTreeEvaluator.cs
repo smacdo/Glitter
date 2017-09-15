@@ -19,21 +19,25 @@ using System.Text;
 
 namespace Glitter.AST
 {
+    // TODO: Move out of AST namespace.
     /// <summary>
     ///  Evaluates an abstract syntax tree using the visitor pattern.
     /// </summary>
     public class AbstractSyntaxTreeEvaluator : IExpressionNodeVisitor<object>, IStatementNodeVisitor<object>
     {
-        private Environment _environment;
+        private Environment _currentEnvironment;
         private IList<Statement> _statements;
 
         public AbstractSyntaxTreeEvaluator(IList<Statement> statements, Environment environment)
         {
-            _environment = environment ?? throw new ArgumentNullException(nameof(environment));
+            RootEnvironment = environment ?? throw new ArgumentNullException(nameof(environment));
+            _currentEnvironment = RootEnvironment;
             _statements = statements ?? throw new ArgumentNullException(nameof(statements));
         }
 
-        public object Evaluate()
+        public Environment RootEnvironment { get; }
+
+        public object Execute()
         {
             foreach (var statement in _statements)
             {
@@ -56,6 +60,8 @@ namespace Glitter.AST
 
         public object VisitVariableDeclarationStatement(VariableDeclarationStatement statement)
         {
+            // TODO: Return refactor - check that is no pending return request. If so throw exception.
+
             object initialValue = null;
             
             if (statement.InitializerExpression != null)
@@ -63,23 +69,32 @@ namespace Glitter.AST
                 initialValue = Evaluate(statement.InitializerExpression);
             }
 
-            _environment.Define(statement.Name, initialValue);
+            _currentEnvironment.Define(statement.Name, initialValue);
+            return null;
+        }
+
+        public object VisitFunctionDeclaration(FunctionDeclaration declaration)
+        {
+            // TODO: Return refactor - check that is no pending return request. If so throw exception.
+            var function = new FunctionDefinition(declaration, _currentEnvironment);
+            _currentEnvironment.Define(declaration.Name, function);
             return null;
         }
 
         public object VisitBlock(Block block)
         {
-            ExecuteBlock(block.Statements, new Environment(_environment));
+            // TODO: Return refactor - check that is no pending return request. If so throw exception.
+            ExecuteBlock(block.Statements, new Environment(_currentEnvironment));
             return null;
         }
 
-        private void ExecuteBlock(IList<Statement> statements, Environment environment)
+        public void ExecuteBlock(IList<Statement> statements, Environment environment)
         {
-            var previous = _environment;
+            var previous = _currentEnvironment;
 
             try
             {
-                _environment = environment;
+                _currentEnvironment = environment;
 
                 foreach (var statement in statements)
                 {
@@ -88,8 +103,44 @@ namespace Glitter.AST
             }
             finally
             {
-                _environment = previous;
+                _currentEnvironment = previous;
             }
+        }
+
+        public object VisitIfStatement(IfStatement statement)
+        {
+            if (IsTruthy(Evaluate(statement.Condition)))
+            {
+                Execute(statement.ThenBranch);
+            }
+            else if (statement.ElseBranch != null)
+            {
+                Execute(statement.ElseBranch);
+            }
+
+            return null;
+        }
+
+        public object VisitWhileStatement(WhileStatement statement)
+        {
+            while (IsTruthy(Evaluate(statement.Condition)))
+            {
+                Execute(statement.Body);
+            }
+
+            return null;
+        }
+
+        public object VisitReturn(ReturnStatement statement)
+        {
+            object result = null;
+
+            if (statement.Expression != null)
+            {
+                result = Evaluate(statement.Expression);
+            }
+
+            throw new ReturnException(result);
         }
 
         public object VisitPrintStatement(PrintStatement statement)
@@ -99,10 +150,7 @@ namespace Glitter.AST
 
             return null;
         }
-
-        /// <summary>
-        ///  Get the result of evaluating an abstract syntax tree node.
-        /// </summary>
+        
         private object Evaluate(ExpressionNode expression)
         {
             return expression.Visit(this);
@@ -191,6 +239,43 @@ namespace Glitter.AST
             }
         }
 
+        public object VisitLogicalNode(LogicalExpressionNode node)
+        {
+            // Evaluate the left side first and then check the logical operation type to enable short circuit
+            // behavior.
+            var left = Evaluate(node.Left);
+            
+            switch (node.Operator.Type)
+            {
+                case TokenType.Or:
+                    // If left is true then short circuit the or expression by returning the left result without
+                    // evaluating the right side.
+                    if (IsTruthy(left))
+                    {
+                        return left;
+                    }
+                    break;
+
+                case TokenType.And:
+                    // If left is false then short circuit the and expression by returning the left result without
+                    // evaluating the right side.
+                    if (!IsTruthy(left))
+                    {
+                        return left;
+                    }
+                    break;
+
+                default:
+                    throw new InvalidOperationException("Unkonwn operator");
+            }
+
+            // The left expression is not sufficient to complete this node's evaluation. Evaluate the right expression
+            // and return it.
+            // TODO: When the language switches to strong typing this code needs to be switched. Rather than returning
+            //       an object that is truthy, a true or false value must be returned.
+            return Evaluate(node.Right);
+        }
+
         /// <summary>
         ///  Grouping nodes represent a parenthesized expression. Each grouping node has an inner expression
         ///  node that should be evaluated and returned.
@@ -198,6 +283,39 @@ namespace Glitter.AST
         public object VisitGroupingNode(GroupingNode groupNode)
         {
             return Evaluate(groupNode.Node);
+        }
+
+        public object VisitCallNode(CallNode node)
+        {
+            var callee = Evaluate(node.Callee);
+            var arguments = new List<object>(); // TODO: Check arrity when eval so we can use simple
+                                                // array for perf rather than List<>.
+
+            foreach (var argument in node.Arguments)
+            {
+                arguments.Add(Evaluate(argument));
+            }
+
+            // Can only call on objects that support callable.
+            if (callee is ICallable function)
+            {
+                if (arguments.Count != function.Arity)
+                {
+                    throw new RuntimeException(
+                        string.Format(
+                            "Expected {0} arguments but got {1}",
+                            function.Arity,
+                            arguments.Count),
+                        null,       // TODO: Fill out
+                        -1);        // TODO: Fill out
+                }
+
+                return function.Call(this, arguments);
+            }
+            else
+            {
+                throw new RuntimeException("Can only call functions and classes", null, -1);
+            }
         }
 
         /// <summary>
@@ -232,13 +350,13 @@ namespace Glitter.AST
 
         public object VisitVariableNode(VariableNode node)
         {
-            return _environment.Get(node.VariableName);
+            return _currentEnvironment.Get(node.VariableName);
         }
 
         public object VisitAssignmentNode(AssignmentNode node)
         {
             var value = Evaluate(node.Value);
-            _environment.Set(node.VariableName, value);
+            _currentEnvironment.Set(node.VariableName, value);
 
             return value;
         }
@@ -305,4 +423,19 @@ namespace Glitter.AST
             }
         }
     }
+
+    // TODO: FIX THE WAY RETURN WORKS!!!! The exception method is a huge hack and only here for early
+    //       prototyping purposes! Manually return up the call chain rather than use the exception method.
+    //       When a return statement is hit, all enqueued statement visitors need to check for pending return
+    //       and abort.
+    public class ReturnException : Exception
+    {
+        public ReturnException(object result)
+        {
+            Result = result;
+        }
+
+        public object Result { get; }
+    }
+
 }

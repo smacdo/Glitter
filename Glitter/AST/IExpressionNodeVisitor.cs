@@ -27,5 +27,7 @@ namespace Glitter.AST
         T VisitUnaryNode(UnaryNode unaryNode);
         T VisitVariableNode(VariableNode node);
         T VisitAssignmentNode(AssignmentNode node);
+        T VisitLogicalNode(LogicalExpressionNode node);
+        T VisitCallNode(CallNode node);
     }
 }

@@ -17,6 +17,7 @@ using System;
 
 namespace Glitter.AST
 {
+    // TODO: Store line + column information (And or lexeme) to reproduce errors.
     public abstract class AbstractSyntaxNode
     {
     }

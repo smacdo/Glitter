@@ -85,7 +85,7 @@ namespace Glitter
                     return CreateToken(TokenType.Dot);
 
                 case '-':
-                    if (IsDigit(PeekNext()))
+                    if (IsDigit(Peek()))
                     {
                         return ReadNumber();
                     }

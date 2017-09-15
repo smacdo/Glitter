@@ -88,7 +88,8 @@ namespace Glitter
         }
 
         /// <summary>
-        ///  Declaration -> VariableDeclaration | Statement
+        ///  Declaration         -> VariableDeclaration | FunctionDeclaration | Statement
+        ///  FunctionDeclaration -> "function" Function
         /// </summary>
         /// <returns></returns>
         private Statement Declarations()
@@ -98,6 +99,10 @@ namespace Glitter
                 if (AdvanceIfCurrentTokenIsOneOf(TokenType.Var))
                 {
                     return VariableDeclaration();
+                }
+                else if (AdvanceIfCurrentTokenIsOneOf(TokenType.Function))
+                {
+                    return Function("function");
                 }
                 else
                 {
@@ -112,9 +117,44 @@ namespace Glitter
         }
 
         /// <summary>
+        ///  Function   -> IDENTIFIER "(" Parameters ")" block
+        ///  Parameters -> IDENTIFIER ( "," IDENTIFIER )*
+        /// </summary>
+        private Statement Function(string expectedFunctionKind)
+        {
+            // Parse the function identifier.
+            var nameToken = Consume(TokenType.Identifier, $"Expected {expectedFunctionKind} name");
+
+            // Parse the parameter list along with the parenthesis around it.
+            Consume(TokenType.LeftParen, $"Expected ( after {expectedFunctionKind} name");
+            var parameters = new List<string>();    // TODO: Optimize with presize.
+
+            if (!IsCurrentTokenA(TokenType.RightParen))
+            {
+                do
+                {
+                    if (parameters.Count > 32)     // TODO: Magic numbers.
+                    {
+                        RaiseError("Too many parameters", null, -1);    // TODO: Better error.
+                    }
+
+                    parameters.Add(Consume(TokenType.Identifier, "Expected parameter name").Lexeme);
+                } while (AdvanceIfCurrentTokenIsOneOf(TokenType.Comma));
+            }
+
+            Consume(TokenType.RightParen, "Expected ) after parameters");
+
+            // Get the function body as a block statement.
+            //  TODO: Do the same with if / for / while.
+            Consume(TokenType.LeftBrace, "Expected { before " + expectedFunctionKind + "body"); // TODO: string $.
+            var body = Block();
+
+            return new FunctionDeclaration(nameToken.LiteralIdentifier, parameters, body);
+        }
+
+        /// <summary>
         ///  VariableDeclaration -> "var" IDENTIFIER ( "=" Expression )? ";"
         /// </summary>
-        /// <returns></returns>
         private Statement VariableDeclaration()
         {
             var name = Consume(TokenType.Identifier, "Expected variable name");
@@ -131,6 +171,10 @@ namespace Glitter
 
         /// <summary>
         ///  Statement -> ExpressionStatement
+        ///             | IfStatement
+        ///             | WhileStatement
+        ///             | ForStatement
+        ///             | ReturnStatement
         ///             | PrintStatement
         ///             | Block
         /// </summary>
@@ -139,6 +183,22 @@ namespace Glitter
             if (AdvanceIfCurrentTokenIsOneOf(TokenType.LeftBrace))
             {
                 return new Block(Block());
+            }
+            else if (AdvanceIfCurrentTokenIsOneOf(TokenType.If))
+            {
+                return IfStatement();
+            }
+            else if (AdvanceIfCurrentTokenIsOneOf(TokenType.While))
+            {
+                return WhileStatement();
+            }
+            else if (AdvanceIfCurrentTokenIsOneOf(TokenType.For))
+            {
+                return ForStatement();
+            }
+            else if (AdvanceIfCurrentTokenIsOneOf(TokenType.Return))
+            {
+                return ReturnStatement();
             }
             else if (AdvanceIfCurrentTokenIsOneOf(TokenType.Print))
             {
@@ -150,6 +210,159 @@ namespace Glitter
                 // TODO: This feels wrong? Especially because ExpressionStatement only holds Expression?
                 return ExpressionStatement();
             }
+        }
+
+        /// <summary>
+        ///  Return -> "return" expression? ";"
+        /// </summary>
+        private Statement ReturnStatement()
+        {
+            ExpressionNode value = null;
+
+            // A return expression is optional. If the next token is not a semi-colon then it can the parser will
+            // assume there is a return expression to be parsed.
+            if (!IsCurrentTokenA(TokenType.Semicolon))
+            {
+                value = Expression();
+            }
+
+            Consume(TokenType.Semicolon, "Expected ; after return expression");
+            return new ReturnStatement(value);
+        }
+
+        /// <summary>
+        ///  If -> "if" "(" expression ")" statement ("else" statement)?
+        /// </summary>
+        /// <remarks>
+        ///  Note that the else branch is eagerly matched such that it is matched to the nearest if statement.
+        ///  This avoids the dangling if else problem.
+        ///  
+        ///  TODO: We should else if or elseif block.
+        /// </remarks>
+        private Statement IfStatement()
+        {
+            // Get the conditional part of the if statemnet.
+            Consume(TokenType.LeftParen, "Expected ( after if");
+            var conditional = Expression();
+            Consume(TokenType.RightParen, "Expected ) after if conditional");
+
+            // Read the "then branch" which is the statement to be executed if the conditional is true.
+            var thenBranch = Statement();
+
+            // Try to read the "else branch" if it exists, which will be the statement that is executed if the
+            // conditional is not true.
+            if (AdvanceIfCurrentTokenIsOneOf(TokenType.Else))
+            {
+                var elseBranch = Statement();
+                return new IfStatement(conditional, thenBranch, elseBranch);
+            }
+            else
+            {
+                return new IfStatement(conditional, thenBranch, null);
+            }
+        }
+
+        /// <summary>
+        ///  While -> "while" "(" Expression ")" Statement
+        /// </summary>
+        private Statement WhileStatement()
+        {
+            Consume(TokenType.LeftParen, "Expected ( after while");
+            var conditional = Expression();
+            Consume(TokenType.RightParen, "Expected ) after while conditional");
+
+            var body = Statement();
+
+            return new WhileStatement(conditional, body);
+        }
+
+        /// <summary>
+        ///  For -> "for" "(" (VariableDeclaration | ExpressionStatement | ";")
+        ///                   Expression? ";"
+        ///                   Expression? ")" Statement
+        /// </summary>
+        private Statement ForStatement()
+        {
+            Consume(TokenType.LeftParen, "Expected ( after for");
+
+            // Read the initializer clause.
+            Statement initializer = null;
+
+            if (AdvanceIfCurrentTokenIsOneOf(TokenType.Semicolon))
+            {
+                // Empty initializer clause.
+            }
+            else if (AdvanceIfCurrentTokenIsOneOf(TokenType.Var))
+            {
+                // Variable declaration clause. (eg var a = 2).
+                initializer = VariableDeclaration();
+            }
+            else
+            {
+                // Expression clause, hopefully an assignment. (eg a = 2).
+                //  TODO: Warn if not assignment.
+                initializer = ExpressionStatement();
+            }
+
+            // Read the conditional clause.
+            ExpressionNode conditional = null;
+
+            if (!IsCurrentTokenA(TokenType.Semicolon))
+            {
+                conditional = Expression();
+            }
+
+            Consume(TokenType.Semicolon, "Expected ; after loop conditional");
+
+            // Read the increment caluse.
+            ExpressionNode increment = null;
+
+            if (!IsCurrentTokenA(TokenType.RightParen))
+            {
+                increment = Expression();
+            }
+
+            Consume(TokenType.RightParen, "Expected ) after for clauses");
+
+            // Ready for body.
+            var body = Statement();
+
+            // Convert the for loop semantics into a while loop statement. Use the process of desugaring to alter the
+            // abstract syntax tree of a new while loop to match the semantics of the for loop that was just parsed.
+            //
+            // First, if there is an increment clause it should execute after the body of the while. Create a new block
+            // statement that holds the while body statement followed by the increment.
+            if (increment != null)
+            {
+                body = new Block(new List<Statement>()
+                {
+                    body,
+                    new ExpressionStatement(increment)
+                });
+            }
+
+            // Inject a true literal if the for loop did not specify a conditonal because for loops without a
+            // conditional expression always default to true.
+            if (conditional == null)
+            {
+                conditional = new LiteralNode(true);
+            }
+
+            // Construct a while statement with the conditional from the for loop.
+            body = new WhileStatement(conditional, body);
+
+            // If an initializer was specified it should be executed prior to the start of the loop. Construct
+            // another block with the initializer first and the while second.
+            if (initializer != null)
+            {
+                body = new Block(new List<Statement>()
+                {
+                    initializer,
+                    body
+                });
+            }
+
+            return body;
         }
 
         private IList<Statement> Block()
@@ -197,14 +410,14 @@ namespace Glitter
         }
 
         /// <summary>
-        ///  Assignment -> Identifier "=" Assignment | Equality
+        ///  Assignment -> Identifier "=" Assignment | Or
         /// </summary>
         private ExpressionNode Assignment()
         {
             // Evaluate the left side of the (potential) assignment expression. Once the lhs expression has been
             // read and if the following token is the "=" operator then treat this as an assignment expression.
             // Otherwise fallthrough to the next rule (equality).
-            var leftValue = Equality();
+            var leftValue = Or();
 
             if (AdvanceIfCurrentTokenIsOneOf(TokenType.Equal))
             {
@@ -231,6 +444,40 @@ namespace Glitter
                 // side as the evaluated expression.
                 return leftValue;
             }
+        }
+
+        /// <summary>
+        ///  Or -> Or | ("or" LogicAnd)*
+        /// </summary>
+        private ExpressionNode Or()
+        {
+            var expression = And();
+
+            while (AdvanceIfCurrentTokenIsOneOf(TokenType.Or))
+            {
+                var @operator = PreviousToken;
+                var right = And();
+                expression = new LogicalExpressionNode(expression, @operator, right);
+            }
+
+            return expression;
+        }
+
+        /// <summary>
+        ///  And -> Equality ("and" Equality)*
+        /// </summary>
+        private ExpressionNode And()
+        {
+            var expression = Equality();
+
+            while (AdvanceIfCurrentTokenIsOneOf(TokenType.And))
+            {
+                var @operator = PreviousToken;
+                var right = Equality();
+                expression = new LogicalExpressionNode(expression, @operator, right);
+            }
+
+            return expression;
         }
 
         /// <summary>
@@ -302,7 +549,7 @@ namespace Glitter
         }
 
         /// <summary>
-        ///  Unary -> ("!" | "-") Unary | Primary
+        ///  Unary -> ("!" | "-") Unary | Call
         /// </summary>
         private ExpressionNode Unary()
         {
@@ -313,7 +560,71 @@ namespace Glitter
                 return new UnaryNode(@operator, right);
             }
 
-            return Primary();
+            return Call();
+        }
+
+        /// <summary>
+        ///  Call -> Primary ("(" arguments? ")")* ;
+        /// </summary>
+        private ExpressionNode Call()
+        {
+            var expression = Primary();
+
+            // Every '(' encountered after the primary expression triggers a call to FinishCall which invokes
+            // the current expression as a function call. The returned expression becomes the new expression
+            // and it loops again to see if the result should be called.
+            while (true)
+            {
+                if (AdvanceIfCurrentTokenIsOneOf(TokenType.LeftParen))
+                {
+                    expression = FinishCall(expression);
+                }
+                else
+                {
+                    // TODO: Handle call on objects.
+                    break;
+                }
+            }
+
+            return expression;
+        }
+
+        private ExpressionNode FinishCall(ExpressionNode callee)
+        {
+            var arguments = new List<ExpressionNode>();
+
+            if (!IsCurrentTokenA(TokenType.RightParen))
+            {
+                do
+                {
+                    arguments.Add(Expression());
+                }
+                while (AdvanceIfCurrentTokenIsOneOf(TokenType.Comma));
+            }
+
+            /*var paren = */Consume(TokenType.RightParen, "Expected ')' after arguments");
+            // TODO: handle position info...
+
+            // Ensure maximum call bounds.
+            //  TODO: Add as a magic number somewhere.
+            //  TODO: add check to callnode.
+            if (arguments.Count > 32)
+            {
+                RaiseError(
+                    "Cannot have more than 32 arguments",
+                    CurrentToken.Lexeme,
+                    CurrentToken.LineNumber);
+            }
+
+            return new CallNode(callee, arguments);
+        }
+
+        /// <summary>
+        ///  Arguments -> Expression ( "," expression)*
+        /// </summary>
+        private ExpressionNode Arguments()
+        {
+            return null;
         }
 
         /// <summary>

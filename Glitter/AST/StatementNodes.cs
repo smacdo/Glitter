@@ -27,7 +27,7 @@ namespace Glitter.AST
     {
         public ExpressionStatement(ExpressionNode expression)
         {
-            Expression = expression;
+            Expression = expression ?? throw new ArgumentNullException(nameof(expression));
         }
 
         public ExpressionNode Expression { get; }
@@ -35,6 +35,53 @@ namespace Glitter.AST
         public override T Visit<T>(IStatementNodeVisitor<T> visitor)
         {
             return visitor.VisitExpressionStatement(this);
+        }
+    }
+
+    public class IfStatement : Statement
+    {
+        /// <summary>
+        ///  Constructor.
+        /// </summary>
+        /// <param name="condition">Required if conditional expression.</param>
+        /// <param name="thenBranch">Required then statement.</param>
+        /// <param name="elseBranch">Optional else statement.</param>
+        public IfStatement(ExpressionNode condition, Statement thenBranch, Statement elseBranch)
+        {
+            Condition = condition ?? throw new ArgumentNullException(nameof(condition));
+            ThenBranch = thenBranch ?? throw new ArgumentNullException(nameof(thenBranch));
+            ElseBranch = elseBranch;
+        }
+
+        public ExpressionNode Condition { get; }
+        public Statement ThenBranch { get; }
+        public Statement ElseBranch { get; }
+
+        public override T Visit<T>(IStatementNodeVisitor<T> visitor)
+        {
+            return visitor.VisitIfStatement(this);
+        }
+    }
+
+    public class WhileStatement : Statement
+    {
+        /// <summary>
+        ///  Constructor.
+        /// </summary>
+        /// <param name="condition">Required conditional expression.</param>
+        /// <param name="body">Required statement body.</param>
+        public WhileStatement(ExpressionNode condition, Statement body)
+        {
+            Condition = condition ?? throw new ArgumentNullException(nameof(condition));
+            Body = body ?? throw new ArgumentNullException(nameof(body));
+        }
+
+        public ExpressionNode Condition { get; }
+        public Statement Body { get; }
+
+        public override T Visit<T>(IStatementNodeVisitor<T> visitor)
+        {
+            return visitor.VisitWhileStatement(this);
         }
     }
 
@@ -56,6 +103,25 @@ namespace Glitter.AST
         }
     }
 
+    public class FunctionDeclaration : Statement
+    {
+        public FunctionDeclaration(string name, IList<string> parameters, IList<Statement> body)
+        {
+            Name = name ?? throw new ArgumentNullException(nameof(name));
+            Parameters = parameters ?? throw new ArgumentNullException(nameof(parameters));
+            Body = body ?? throw new ArgumentNullException(nameof(body));
+        }
+
+        public string Name { get; }
+        public IList<string> Parameters { get; }        // TODO: Make into array.
+        public IList<Statement> Body { get; }           // TODO: Make into array.
+
+        public override T Visit<T>(IStatementNodeVisitor<T> visitor)
+        {
+            return visitor.VisitFunctionDeclaration(this);
+        }
+    }
+
     public class Block : Statement
     {
         public Block(IList<Statement> statements)
@@ -68,6 +134,21 @@ namespace Glitter.AST
         public override T Visit<T>(IStatementNodeVisitor<T> visitor)
         {
             return visitor.VisitBlock(this);
+        }
+    }
+
+    public class ReturnStatement : Statement
+    {
+        public ReturnStatement(ExpressionNode expression)
+        {
+            Expression = expression;
+        }
+
+        public ExpressionNode Expression { get; }
+
+        public override T Visit<T>(IStatementNodeVisitor<T> visitor)
+        {
+            return visitor.VisitReturn(this);
         }
     }
 

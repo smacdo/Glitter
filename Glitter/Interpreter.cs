@@ -32,6 +32,11 @@ namespace Glitter
         public TextReader StandardIn { get; set; }
         public TextWriter StandardOut { get; set; }
 
+        public Interpreter()
+        {
+            NativeFunctions.Register(_environment);
+        }
+
         /// <summary>
         ///  Run Glitter code.
         /// </summary>
@@ -39,7 +44,7 @@ namespace Glitter
         public void Run(string code)
         {
             var scanner = new Scanner(code);
-
+            // TOOD: Much better error handling, this stuff is gross.
             try
             {
                 var tokens = scanner.ScanTokens();
@@ -54,7 +59,7 @@ namespace Glitter
                     try
                     {
                         var evaluator = new AbstractSyntaxTreeEvaluator(statements, _environment);
-                        var result = evaluator.Evaluate();
+                        var result = evaluator.Execute();
 
                         //Console.WriteLine(Stringify(result));
                     }

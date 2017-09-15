@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 using System;
+using System.Collections.Generic;
 
 namespace Glitter.AST
 {
@@ -30,6 +31,7 @@ namespace Glitter.AST
     /// </summary>
     public class BinaryExpressionNode : ExpressionNode
     {
+        // TODO: Token -> TokenType -> OperatorType
         public BinaryExpressionNode(ExpressionNode left, Token @operator, ExpressionNode right)
         {
             Left = left ?? throw new ArgumentNullException(nameof(left));
@@ -50,6 +52,31 @@ namespace Glitter.AST
         public override T Visit<T>(IExpressionNodeVisitor<T> visitor)
         {
             return visitor.VisitBinaryExpressionNode(this);
+        }
+    }
+    public class LogicalExpressionNode : ExpressionNode
+    {
+        // TODO: Token -> TokenType -> OperatorType
+        public LogicalExpressionNode(ExpressionNode left, Token @operator, ExpressionNode right)
+        {
+            Left = left ?? throw new ArgumentNullException(nameof(left));
+            Right = right ?? throw new ArgumentNullException(nameof(right));
+
+            if (@operator.Type != TokenType.And && @operator.Type != TokenType.Or) 
+            {
+                throw new ArgumentException(nameof(@operator));
+            }
+
+            Operator = @operator;
+        }
+
+        public ExpressionNode Left { get; private set; }
+        public Token Operator { get; private set; }
+        public ExpressionNode Right { get; private set; }
+
+        public override T Visit<T>(IExpressionNodeVisitor<T> visitor)
+        {
+            return visitor.VisitLogicalNode(this);
         }
     }
 
@@ -135,6 +162,24 @@ namespace Glitter.AST
         public override T Visit<T>(IExpressionNodeVisitor<T> visitor)
         {
             return visitor.VisitAssignmentNode(this);
+        }
+    }
+
+    public class CallNode : ExpressionNode
+    {
+        // TODO: Need to add location tracking to AST for runtime error reporting.
+        public CallNode(ExpressionNode callee, IList<ExpressionNode> arguments)
+        {
+            Callee = callee ?? throw new ArgumentNullException(nameof(callee));
+            Arguments = arguments ?? throw new ArgumentNullException(nameof(arguments));
+        }
+
+        public ExpressionNode Callee { get; }
+        public IList<ExpressionNode> Arguments { get; }
+
+        public override T Visit<T>(IExpressionNodeVisitor<T> visitor)
+        {
+            return visitor.VisitCallNode(this);
         }
     }
 }
