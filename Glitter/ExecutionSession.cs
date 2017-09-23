@@ -16,6 +16,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using Glitter.AST;
 using Glitter.AstInterpreter;
@@ -27,115 +28,120 @@ namespace Glitter
     /// </summary>
     public class ExecutionSession
     {
-        private Environment _environment = new Environment();
+        private Environment _rootEnvironment = new Environment();
+        private List<UserCodeException> _parseExceptions = new List<UserCodeException>();
 
-        public EventHandler<InterpreterExceptionEventArgs> OnException { get; set; }
-        public TextReader StandardIn { get; set; }
-        public TextWriter StandardOut { get; set; }
+        public EventHandler<ExecutionSessionErrorArgs> OnException { get; set; }
+        public TextReader StandardIn { get { return _rootEnvironment.StandardInput; } }
+        public TextWriter StandardOut { get { return _rootEnvironment.StandardOutput; } }
 
-        public ExecutionSession()
+        public ExecutionSession(TextReader standardIn, TextWriter standardOut)
         {
-            NativeFunctions.Register(_environment);
+            _rootEnvironment.StandardInput = standardIn ?? throw new ArgumentNullException(nameof(standardIn));
+            _rootEnvironment.StandardOutput = standardOut ?? throw new ArgumentNullException(nameof(standardOut));
+
+            NativeFunctions.Register(_rootEnvironment);
         }
 
         /// <summary>
         ///  Run Glitter code.
         /// </summary>
         /// <param name="code">Code to execute.</param>
+        /// <returns>The final result of running the code.</returns>
         public void Run(string code)
         {
-            var scanner = new Scanner(code);
-            // TOOD: Much better error handling, this stuff is gross.
+            Run(code, string.Empty);
+        }
+
+        public void Run(string code, string sourceFilePath)
+        {
             try
             {
+                // Convert code text into tokens.
+                var scanner = new Scanner(code, sourceFilePath);
                 var tokens = scanner.ScanTokens();
 
+                // Reset parser errors before running parser.
+                _parseExceptions.Clear();
+
+                // Parse tokens into abstract syntax tree.
                 var parser = new Parser(tokens);
                 parser.OnError += OnParserError;
 
                 var statements = parser.Parse();
 
-                if (!parser.HasParseErrors)
+                // Do not execute the AST if there were errors in the code.
+                if (_parseExceptions.Count > 0)
                 {
-                    try
+                    if (!HandleExceptions(_parseExceptions))
                     {
-                        var evaluator = new AbstractSyntaxTreeInterpreter(statements, _environment);
-                        var result = evaluator.Execute();
+                        throw _parseExceptions.First();
+                    }
 
-                        //Console.WriteLine(Stringify(result));
-                    }
-                    catch (RuntimeException e)
-                    {
-                        Console.WriteLine(e.ToString());
-                    }
+                    return;
                 }
+
+                // Resolve variable references.
+                var resolver = new Resolver();
+                resolver.Resolve(statements);
+
+                // Evaluate the abstract syntax tree.
+                var evaluator = new AbstractSyntaxTreeInterpreter(statements, _rootEnvironment);
+                var result = evaluator.Execute();
+
+                // TODO: Use a callback to allow the caller to potentially print the result.
             }
-            catch (InterpreterException e)
+            catch (UserCodeException e)
             {
-                if (!HandleExcepton(e))
+                if (!HandleException(e))
                 {
                     throw;
                 }
             }
         }
 
-        private void PrintSyntaxTree(Expression root)
-        {
-            if (root == null)
-            {
-                Console.Error.WriteLine("Parse result was null!");
-            }
-            else
-            {
-                Console.WriteLine(new AbstractSyntaxTreePrinter().Print(root));
-            }
-        }
-
+        /// <summary>
+        ///  Handle parser errors by adding them to a list of errors.
+        /// </summary>
         private void OnParserError(object sender, ParseErrorEventArgs e)
         {
-            Console.Error.WriteLine(e.Message);
-            Console.Error.WriteLine(e.What);
+            _parseExceptions.Add(e.Exception);
         }
 
         /// <summary>
-        ///  Invoke exception event listeners that an exception happened.
+        ///  Inform any exception event listeners that an exception happened.
         /// </summary>
-        /// <param name="e">The exception that happened.</param>
+        /// <param name="exception">The exception that happened.</param>
         /// <returns>True if at least one listener is called, false otherwise.</returns>
-        private bool HandleExcepton(InterpreterException e)
+        private bool HandleException(UserCodeException exception)
+        {
+            return HandleExceptions(new List<UserCodeException>() { exception });
+        }
+
+        /// <summary>
+        ///  Inform any exception event listeners that an exception happened.
+        /// </summary>
+        /// <param name="exceptions">A list of exceptions that happened.</param>
+        /// <returns>True if at least one listener is called, false otherwise.</returns>
+        private bool HandleExceptions(IEnumerable<UserCodeException> exceptions)
         {
             if (OnException != null)
             {
-                OnException.Invoke(this, new InterpreterExceptionEventArgs()
-                {
-                    LineNumber = e.LineNumber,
-                    Message = e.Message,
-                    What = e.What,
-                });
-
+                OnException.Invoke(this, new ExecutionSessionErrorArgs(exceptions));
                 return true;
             }
 
             return false;
         }
-
-        /// <summary>
-        ///  Write a line of text to standard out, if possible.
-        /// </summary>
-        /// <param name="text">Line of text to write.</param>
-        private void WriteLine(string text)
-        {
-            if (StandardOut != null)
-            {
-                StandardOut.WriteLine(text);
-            }
-        }
     }
 
-    public class InterpreterExceptionEventArgs : EventArgs
+    public class ExecutionSessionErrorArgs : EventArgs
     {
-        public string Message { get; set; }
-        public string What { get; set; }
-        public int LineNumber { get; set; }
+        public ExecutionSessionErrorArgs(IEnumerable<UserCodeException> exceptions)
+        {
+            Exceptions = exceptions;
+        }
+
+        public IEnumerable<UserCodeException> Exceptions { get; }
     }
 }

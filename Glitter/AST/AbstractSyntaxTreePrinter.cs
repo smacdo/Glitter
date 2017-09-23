@@ -33,7 +33,7 @@ namespace Glitter.AST
 
         public string VisitGrouping(GroupingExpression node)
         {
-            return Parenthesize("group", node.Node);
+            return Parenthesize("group", node.Expression);
         }
 
         public string VisitLiteral(LiteralExpression node)
@@ -81,7 +81,7 @@ namespace Glitter.AST
             throw new NotImplementedException();
         }
 
-        public string VistiCall(CallExpression node)
+        public string VisitCall(CallExpression node)
         {
             throw new NotImplementedException();
         }

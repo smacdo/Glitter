@@ -17,17 +17,14 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace Glitter.AST
+namespace Glitter
 {
-    public interface IExpressionVisitor<T>
+
+    public static class StringUtils
     {
-        T VisitBinary(BinaryExpression binaryNode);
-        T VisitGrouping(GroupingExpression groupNode);
-        T VisitLiteral(LiteralExpression literalNode);
-        T VistUnary(UnaryExpression unaryNode);
-        T VisitVariable(VariableExpression node);
-        T VisitAssignment(AssignmentExpression node);
-        T VisitLogical(LogicalExpression node);
-        T VisitCall(CallExpression node);
+        public static long GetLineNumberForCharacterOffset(long offset)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

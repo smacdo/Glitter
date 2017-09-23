@@ -20,12 +20,20 @@ namespace Glitter.AST
 {
     public abstract class Statement : AbstractSyntaxNode
     {
+        public Statement(int lineNumber)
+        {
+            LineNumber = lineNumber;
+        }
+
+        public int LineNumber { get; }
+
         public abstract T Visit<T>(IStatementNodeVisitor<T> visitor);
     }
 
     public class ExpressionStatement : Statement
     {
-        public ExpressionStatement(Expression expression)
+        public ExpressionStatement(Expression expression, int lineNumber)
+            : base(lineNumber)
         {
             Expression = expression ?? throw new ArgumentNullException(nameof(expression));
         }
@@ -46,7 +54,9 @@ namespace Glitter.AST
         /// <param name="condition">Required if conditional expression.</param>
         /// <param name="thenBranch">Required then statement.</param>
         /// <param name="elseBranch">Optional else statement.</param>
-        public IfStatement(Expression condition, Statement thenBranch, Statement elseBranch)
+        /// <param name="lineNumber">Line number for first line of if statement.</param>
+        public IfStatement(Expression condition, Statement thenBranch, Statement elseBranch, int lineNumber)
+            : base(lineNumber)
         {
             Condition = condition ?? throw new ArgumentNullException(nameof(condition));
             ThenBranch = thenBranch ?? throw new ArgumentNullException(nameof(thenBranch));
@@ -70,7 +80,9 @@ namespace Glitter.AST
         /// </summary>
         /// <param name="condition">Required conditional expression.</param>
         /// <param name="body">Required statement body.</param>
-        public WhileStatement(Expression condition, Statement body)
+        /// <param name="lineNumber">First line of while statement.</param>
+        public WhileStatement(Expression condition, Statement body, int lineNumber)
+            : base(lineNumber)
         {
             Condition = condition ?? throw new ArgumentNullException(nameof(condition));
             Body = body ?? throw new ArgumentNullException(nameof(body));
@@ -88,7 +100,8 @@ namespace Glitter.AST
     public class VariableDeclarationStatement : Statement
     {
         // TODO: Don't take token just take name?
-        public VariableDeclarationStatement(Token name, Expression initializerExpression)
+        public VariableDeclarationStatement(Token name, Expression initializerExpression, int lineNumber)
+            : base(lineNumber)
         {
             Name = name.LiteralIdentifier;
             InitializerExpression = initializerExpression;
@@ -105,7 +118,12 @@ namespace Glitter.AST
 
     public class FunctionDeclarationStatement : Statement
     {
-        public FunctionDeclarationStatement(string name, IList<string> parameters, IList<Statement> body)
+        public FunctionDeclarationStatement(
+            string name,
+            IList<string> parameters,
+            IList<Statement> body,
+            int lineNumber)
+            : base(lineNumber)
         {
             Name = name ?? throw new ArgumentNullException(nameof(name));
             Parameters = parameters ?? throw new ArgumentNullException(nameof(parameters));
@@ -124,7 +142,8 @@ namespace Glitter.AST
 
     public class BlockStatemnt : Statement
     {
-        public BlockStatemnt(IList<Statement> statements)
+        public BlockStatemnt(IList<Statement> statements, int lineNumber)
+            : base(lineNumber)
         {
             Statements = statements ?? throw new ArgumentNullException(nameof(statements));
         }
@@ -139,7 +158,8 @@ namespace Glitter.AST
 
     public class ReturnStatement : Statement
     {
-        public ReturnStatement(Expression expression)
+        public ReturnStatement(Expression expression, int lineNumber)
+            : base(lineNumber)
         {
             Expression = expression;
         }
@@ -154,7 +174,8 @@ namespace Glitter.AST
 
     public class PrintStatement : Statement
     {
-        public PrintStatement(Expression expression)
+        public PrintStatement(Expression expression, int lineNumber)
+            : base(lineNumber)
         {
             Expression = expression;
         }

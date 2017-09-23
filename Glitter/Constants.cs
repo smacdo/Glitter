@@ -17,17 +17,10 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace Glitter.AST
+namespace Glitter
 {
-    public interface IExpressionVisitor<T>
+    public static class Constants
     {
-        T VisitBinary(BinaryExpression binaryNode);
-        T VisitGrouping(GroupingExpression groupNode);
-        T VisitLiteral(LiteralExpression literalNode);
-        T VistUnary(UnaryExpression unaryNode);
-        T VisitVariable(VariableExpression node);
-        T VisitAssignment(AssignmentExpression node);
-        T VisitLogical(LogicalExpression node);
-        T VisitCall(CallExpression node);
+        public static string NullName { get { return "undefined"; } }
     }
 }

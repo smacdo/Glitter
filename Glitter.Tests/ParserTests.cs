@@ -14,7 +14,9 @@
  * limitations under the License.
  */
 using System;
+using System.Collections.Generic;
 using System.Linq;
+using Glitter.AST;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace Glitter.Tests
@@ -22,5 +24,39 @@ namespace Glitter.Tests
     [TestClass]
     public class ParserTests
     {
+        [TestMethod]
+        public void Assignment_Statement_With_Initializer()
+        {
+
+        }
+
+        /// <summary>
+        ///  Parse a very simple one statement binary expression.
+        /// </summary>
+        [TestMethod]
+        public void Binary_Expression_Statement()
+        {
+            var statements = Parse("1 + 2;");
+
+            Assert.AreEqual(1, statements.Count);
+            Assert.IsInstanceOfType(statements[0], typeof(ExpressionStatement));
+        }
+
+        private IList<Statement> Parse(string code)
+        {
+            var scanner = new Scanner(code);
+            var tokens = scanner.ScanTokens();
+
+            var parser = new Parser(tokens);
+            parser.OnError += OnParserError;
+
+            return parser.Parse();
+        }
+
+        private void OnParserError(object sender, ParseErrorEventArgs e)
+        {
+            throw e.Exception;
+        }
+
     }
 }

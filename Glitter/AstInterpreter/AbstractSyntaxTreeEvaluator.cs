@@ -27,6 +27,7 @@ namespace Glitter.AstInterpreter
     {
         private Environment _currentEnvironment;
         private IList<Statement> _statements;
+        private int _currentLineNumber = 0;
 
         public AbstractSyntaxTreeInterpreter(IList<Statement> statements, Environment environment)
         {
@@ -39,16 +40,21 @@ namespace Glitter.AstInterpreter
 
         public object Execute()
         {
-            foreach (var statement in _statements)
+            Execute(_statements);
+            return null;
+        }
+
+        public void Execute(IList<Statement> statements)
+        {
+            foreach (var statement in statements)
             {
                 Execute(statement);
             }
-
-            return null;
         }
 
         private void Execute(Statement statement)
         {
+            _currentLineNumber = statement.LineNumber;
             statement.Visit(this);
         }
 
@@ -90,20 +96,18 @@ namespace Glitter.AstInterpreter
 
         public void ExecuteBlock(IList<Statement> statements, Environment environment)
         {
-            var previous = _currentEnvironment;
+            var previousEnvironment = _currentEnvironment;
+            var previousLine = _currentLineNumber;
 
             try
             {
                 _currentEnvironment = environment;
-
-                foreach (var statement in statements)
-                {
-                    Execute(statement);
-                }
+                Execute(statements);
             }
             finally
             {
-                _currentEnvironment = previous;
+                _currentEnvironment = previousEnvironment;
+                _currentLineNumber = previousLine;
             }
         }
 
@@ -146,7 +150,9 @@ namespace Glitter.AstInterpreter
         public object VisitPrint(PrintStatement statement)
         {
             var value = Evaluate(statement.Expression);
-            Console.WriteLine(Stringify(value));
+            var writer = _currentEnvironment.StandardOutput;
+
+            writer.WriteLine(Stringify(value));
 
             return null;
         }
@@ -181,7 +187,7 @@ namespace Glitter.AstInterpreter
                     }
                     else
                     {
-                        throw new RuntimeException("LHS and RHS must be two numbers or strings", null, 0);
+                        throw new RuntimeException("LHS and RHS must be two numbers or strings", _currentLineNumber);
                     }
 
                 // -
@@ -282,10 +288,10 @@ namespace Glitter.AstInterpreter
         /// </summary>
         public object VisitGrouping(GroupingExpression groupNode)
         {
-            return Evaluate(groupNode.Node);
+            return Evaluate(groupNode.Expression);
         }
 
-        public object VistiCall(CallExpression node)
+        public object VisitCall(CallExpression node)
         {
             var callee = Evaluate(node.Callee);
             var arguments = new List<object>(); // TODO: Check arrity when eval so we can use simple
@@ -306,15 +312,14 @@ namespace Glitter.AstInterpreter
                             "Expected {0} arguments but got {1}",
                             function.Arity,
                             arguments.Count),
-                        null,       // TODO: Fill out
-                        -1);        // TODO: Fill out
+                        _currentLineNumber);
                 }
 
                 return function.Call(this, arguments);
             }
             else
             {
-                throw new RuntimeException("Can only call functions and classes", null, -1);
+                throw new RuntimeException("Can only call functions and classes", _currentLineNumber);
             }
         }
 
@@ -350,22 +355,49 @@ namespace Glitter.AstInterpreter
 
         public object VisitVariable(VariableExpression node)
         {
-            return _currentEnvironment.Get(node.VariableName);
+            return LookupVariable(node.VariableName, node.ScopeDistance);
         }
 
         public object VisitAssignment(AssignmentExpression node)
         {
             var value = Evaluate(node.Value);
-            _currentEnvironment.Set(node.VariableName, value);
+
+            try
+            {
+                _currentEnvironment.SetAt(node.VariableName, value, node.ScopeDistance);
+            }
+            catch (UndefinedVariableException e)
+            {
+                throw new RuntimeException($"Undefined variable {e.VariableName}", _currentLineNumber);
+            }
 
             return value;
         }
 
-        private static void ExpectNumber(object o, string failureMessage)
+        private object LookupVariable(string name, int scopeIndex)
+        {
+            try
+            {
+                if (scopeIndex >= 0)
+                {
+                    return _currentEnvironment.GetAt(name, scopeIndex);
+                }
+                else
+                {
+                    return RootEnvironment.Get(name);
+                }
+            }
+            catch (UndefinedVariableException e)
+            {
+                throw new RuntimeException($"Undefined variable {e.VariableName}", _currentLineNumber);
+            }
+        }
+
+        private void ExpectNumber(object o, string failureMessage)
         {
             if (o is double == false)
             {
-                throw new RuntimeException(failureMessage, null, 0); 
+                throw new RuntimeException(failureMessage, _currentLineNumber); 
             }
         }
 

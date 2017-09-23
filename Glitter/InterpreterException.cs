@@ -19,69 +19,112 @@ using System.Text;
 
 namespace Glitter
 {
-    // TODO: Change from what to a model where we pass the buffer, a start offset and an end offset. The output can
-    //       properly display this.
     /// <summary>
     ///  Base class for Glitter interpreter exceptions.
     /// </summary>
-    public class InterpreterException : System.Exception
+    public class UserCodeException : System.Exception
     {
         /// <summary>
-        ///  Get what input caused the exception.
+        ///  Get index of first character in the code that generated this exception.
         /// </summary>
-        public string What { get; set; }
+        public int? FirstCharIndex { get; }
 
         /// <summary>
-        ///  Get what line the exception occured on.
+        ///  Get the number of characters psat that first char index in the code that generated this exception.
         /// </summary>
-        public int LineNumber { get; set; }
+        public int? CharLength { get; }
 
-        public InterpreterException(string message)
-            : this(message, null, 0)
-        {
-        }
+        /// <summary>
+        ///  Get the line number in the code that generated this exception.
+        /// </summary>
+        public int? LineNumber { get; }
 
-        public InterpreterException(string message, string what)
-            : this(message, what, 0)
-        {
-        }
-
-        public InterpreterException(string message, string what, int lineNumber)
+        /// <summary>
+        ///  Constructor.
+        /// </summary>
+        /// <param name="message">Exception message.</param>
+        public UserCodeException(string message)
             : base(message)
         {
-            What = what;
+        }
+
+        /// <summary>
+        ///  Constructor.
+        /// </summary>
+        /// <param name="message">Exception message.</param>
+        /// <param name="firstCharIndex">First character in code causing this error.</param>
+        /// <param name="charLength">Number of characters in the code causingg this error.</param>
+        public UserCodeException(string message, int firstCharIndex, int charLength)
+            : base(message)
+        {
+            FirstCharIndex = firstCharIndex;
+            CharLength = charLength;
+        }
+
+        public UserCodeException(string message, int lineNumber)
+            : base(message)
+        {
             LineNumber = lineNumber;
         }
     }
 
-    public class UnexpectedCharacterException : InterpreterException
+    #region Scanner exceptions
+    public class ScannerException : UserCodeException
     {
-        public UnexpectedCharacterException(char c, int line)
-            : base("Unexpected character", Convert.ToString(c), line)
+        public ScannerException(string message)
+            : base(message)
+        {
+        }
+
+        public ScannerException(string message, int firstCharIndex, int charLength)
+            : base(message, firstCharIndex, charLength)
+        {
+        }
+
+        public ScannerException(string message, Token token)
+            : base(message, token.StartIndex, token.Length)
         {
         }
     }
 
-    public class UnterminatedStringException : InterpreterException
+    public class UnexpectedCharacterException : ScannerException
     {
-        public UnterminatedStringException(int line)
-            : base("Unterminated string", string.Empty, line)
+        public UnexpectedCharacterException(char c, int firstCharIndex)
+            : base($"Unexpected character '{c}'", firstCharIndex, 1)
         {
         }
     }
 
-    public class ParserException : InterpreterException
+    public class UnterminatedStringException : ScannerException
     {
-        public ParserException(string message, string what, int line)
-            : base(message, what, line)
+        public UnterminatedStringException(int firstCharIndex)
+            : base("Unterminated string", firstCharIndex, 1)
         {
         }
     }
 
-    public class RuntimeException : InterpreterException
+    public class UnterminatedBlockCommentException : ScannerException
     {
-        public RuntimeException(string message, string what, int line)
-            : base(message, what, line)
+        public UnterminatedBlockCommentException(int firstCharIndex)
+            : base("Unterminated block comment", firstCharIndex, 2)
+        {
+        }
+    }
+    #endregion
+    #region Parser exceptions
+    public class ParserException : UserCodeException
+    {
+        public ParserException(string message, Token token)
+            : base(message, token.StartIndex, token.Length)
+        {
+        }
+    }
+    #endregion
+
+    public class RuntimeException : UserCodeException
+    {
+        public RuntimeException(string message, int lineNumber)
+            : base(message, lineNumber)
         {
         }
     }

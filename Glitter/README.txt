@@ -6,6 +6,7 @@ Left to right evaluation order
 
 TODO
 =====
+ - Change var to let
 
  - Split number type into Integer and Floating point.
  - Break, continue

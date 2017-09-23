@@ -15,6 +15,7 @@
  */
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Glitter.AST
 {
@@ -84,10 +85,10 @@ namespace Glitter.AST
     {
         public GroupingExpression(Expression node)
         {
-            Node = node ?? throw new ArgumentNullException(nameof(node));
+            Expression = node ?? throw new ArgumentNullException(nameof(node));
         }
 
-        public Expression Node { get; private set; }
+        public Expression Expression { get; private set; }
 
         public override T Visit<T>(IExpressionVisitor<T> visitor)
         {
@@ -103,6 +104,11 @@ namespace Glitter.AST
         }
 
         public object Value { get; private set; }
+
+        public override string ToString()
+        {
+            return $"<literal {Value ?? Constants.NullName}>";
+        }
 
         public override T Visit<T>(IExpressionVisitor<T> visitor)
         {
@@ -135,12 +141,13 @@ namespace Glitter.AST
 
     public class VariableExpression : Expression
     {
-        public VariableExpression(Token name)     // TODO: Don't take token just take name
+        public VariableExpression(Token name)
         {
             VariableName = name.LiteralIdentifier;
         }
 
         public string VariableName { get; }
+        public int ScopeDistance { get; set; } = -1;
 
         public override T Visit<T>(IExpressionVisitor<T> visitor)
         {
@@ -158,6 +165,7 @@ namespace Glitter.AST
 
         public Expression Value { get; }
         public string VariableName { get; }
+        public int ScopeDistance { get; set; } = -1;
 
         public override T Visit<T>(IExpressionVisitor<T> visitor)
         {
@@ -167,7 +175,6 @@ namespace Glitter.AST
 
     public class CallExpression : Expression
     {
-        // TODO: Need to add location tracking to AST for runtime error reporting.
         public CallExpression(Expression callee, IList<Expression> arguments)
         {
             Callee = callee ?? throw new ArgumentNullException(nameof(callee));
@@ -179,7 +186,7 @@ namespace Glitter.AST
 
         public override T Visit<T>(IExpressionVisitor<T> visitor)
         {
-            return visitor.VistiCall(this);
+            return visitor.VisitCall(this);
         }
     }
 }

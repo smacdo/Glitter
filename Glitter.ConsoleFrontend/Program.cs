@@ -15,6 +15,7 @@
  */
 using System;
 using System.IO;
+using System.Text;
 
 namespace Glitter.ConsoleFrontend
 {
@@ -24,6 +25,7 @@ namespace Glitter.ConsoleFrontend
     public class Program
     {
         private static ConsoleColor _defaultForegroundColor;
+        private static StringBuilder _interactiveModeCode;
 
         public static void Main(string[] args)
         {
@@ -46,50 +48,57 @@ namespace Glitter.ConsoleFrontend
             }
         }
 
+        /// <summary>
+        ///  Load file as text.
+        /// </summary>
+        /// <param name="fileName">Path to file.</param>
         private static void RunFile(string fileName)
         {
-            // TODO: Handle file load error.
-            var code = File.ReadAllText(fileName);
-            var interpreter = new ExecutionSession()
+            try
             {
-                OnException = HandleException,
-                StandardIn = Console.In,
-                StandardOut = Console.Out
-            };
+                var code = File.ReadAllText(fileName);
+                var interpreter = new ExecutionSession(Console.In, Console.Out)
+                {
+                    OnException = HandleException
+                };
 
-            interpreter.Run(code);
+                interpreter.Run(code);
+            }
+            catch (FileLoadException e)
+            {
+                Console.Error.WriteLine("Failed to load file: {0}", fileName);
+            }
         }
 
+        /// <summary>
+        ///  Run Glitter in interactive mode.
+        /// </summary>
         private static void RunInteractive()
         {
-            var interpreter = new ExecutionSession()
+            var interpreter = new ExecutionSession(Console.In, Console.Out)
             {
-                OnException = HandleException,
-                StandardIn = Console.In,
-                StandardOut = Console.Out
+                OnException = HandleException
             };
+
+            _interactiveModeCode = new StringBuilder();
 
             while (true)
             {
                 Console.Write("> ");
-                interpreter.Run(Console.ReadLine());
+
+                var userInput = Console.ReadLine();
+                _interactiveModeCode.AppendLine(userInput);
+
+                interpreter.Run(userInput);
             }
         }
 
-        private static void HandleException(object sender, InterpreterExceptionEventArgs args)
+        private static void HandleException(object sender, ExecutionSessionErrorArgs args)
         {
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine("Exception: {0}", args.Message);
 
-            if (!string.IsNullOrEmpty(args.What))
-            {
-                Console.WriteLine(" context: '{0}'", args.What);
-            }
-            
-            if (args.LineNumber > 0)
-            {
-                Console.WriteLine(" line   : {0}", args.LineNumber);
-            }
+            var formatter = new ErrorFormatter() { InteractiveModeSourceCode = _interactiveModeCode.ToString() };
+            Console.Write(formatter.Format(args.Exceptions));
             
             Console.ForegroundColor = _defaultForegroundColor;
         }

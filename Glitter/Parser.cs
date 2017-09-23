@@ -81,7 +81,12 @@ namespace Glitter
             
             while (!TokenStreamEnded)
             {
-                statements.Add(Declarations());
+                var s = Declarations();
+
+                if (s != null)
+                {
+                    statements.Add(s);
+                }
             }
 
             return statements;
@@ -109,7 +114,7 @@ namespace Glitter
                     return Statement();
                 }
             }
-            catch (ParserException e)
+            catch (ParserException)
             {
                 PerformErrorRecovery();
                 return null;        // TODO: Filter null from results!
@@ -135,7 +140,7 @@ namespace Glitter
                 {
                     if (parameters.Count > 32)     // TODO: Magic numbers.
                     {
-                        RaiseError("Too many parameters", null, -1);    // TODO: Better error.
+                        RaiseError("Too many parameters", CurrentToken);    // TODO: Better error.
                     }
 
                     parameters.Add(Consume(TokenType.Identifier, "Expected parameter name").Lexeme);
@@ -149,7 +154,11 @@ namespace Glitter
             Consume(TokenType.LeftBrace, "Expected { before " + expectedFunctionKind + "body"); // TODO: string $.
             var body = Block();
 
-            return new FunctionDeclarationStatement(nameToken.LiteralIdentifier, parameters, body);
+            return new FunctionDeclarationStatement(
+                nameToken.LiteralIdentifier,
+                parameters,
+                body,
+                nameToken.LineNumber);
         }
 
         /// <summary>
@@ -166,7 +175,7 @@ namespace Glitter
             }
 
             Consume(TokenType.Semicolon, "Expected ; after variable declaration");
-            return new VariableDeclarationStatement(name, initializer);
+            return new VariableDeclarationStatement(name, initializer, name.LineNumber);
         }
 
         /// <summary>
@@ -182,7 +191,7 @@ namespace Glitter
         {
             if (AdvanceIfCurrentTokenIsOneOf(TokenType.LeftBrace))
             {
-                return new BlockStatemnt(Block());
+                return new BlockStatemnt(Block(), PreviousToken.LineNumber);
             }
             else if (AdvanceIfCurrentTokenIsOneOf(TokenType.If))
             {
@@ -218,6 +227,7 @@ namespace Glitter
         private Statement ReturnStatement()
         {
             Expression value = null;
+            int lineNumber = PreviousToken.LineNumber;
 
             // A return expression is optional. If the next token is not a semi-colon then it can the parser will
             // assume there is a return expression to be parsed.
@@ -227,7 +237,7 @@ namespace Glitter
             }
 
             Consume(TokenType.Semicolon, "Expected ; after return expression");
-            return new ReturnStatement(value);
+            return new ReturnStatement(value, lineNumber);
         }
 
         /// <summary>
@@ -241,6 +251,8 @@ namespace Glitter
         /// </remarks>
         private Statement IfStatement()
         {
+            int lineNumber = PreviousToken.LineNumber;
+
             // Get the conditional part of the if statemnet.
             Consume(TokenType.LeftParen, "Expected ( after if");
             var conditional = Expression();
@@ -254,11 +266,11 @@ namespace Glitter
             if (AdvanceIfCurrentTokenIsOneOf(TokenType.Else))
             {
                 var elseBranch = Statement();
-                return new IfStatement(conditional, thenBranch, elseBranch);
+                return new IfStatement(conditional, thenBranch, elseBranch, lineNumber);
             }
             else
             {
-                return new IfStatement(conditional, thenBranch, null);
+                return new IfStatement(conditional, thenBranch, null, lineNumber);
             }
         }
 
@@ -267,13 +279,15 @@ namespace Glitter
         /// </summary>
         private Statement WhileStatement()
         {
+            int lineNumber = PreviousToken.LineNumber;
+
             Consume(TokenType.LeftParen, "Expected ( after while");
             var conditional = Expression();
             Consume(TokenType.RightParen, "Expected ) after while conditional");
 
             var body = Statement();
 
-            return new WhileStatement(conditional, body);
+            return new WhileStatement(conditional, body, lineNumber);
         }
 
         /// <summary>
@@ -283,6 +297,7 @@ namespace Glitter
         /// </summary>
         private Statement ForStatement()
         {
+            var lineNumber = PreviousToken.LineNumber;
             Consume(TokenType.LeftParen, "Expected ( after for");
 
             // Read the initializer clause.
@@ -337,8 +352,9 @@ namespace Glitter
                 body = new BlockStatemnt(new List<Statement>()
                 {
                     body,
-                    new ExpressionStatement(increment)
-                });
+                    new ExpressionStatement(increment, lineNumber)
+                },
+                lineNumber);
             }
 
             // Inject a true literal if the for loop did not specify a conditonal because for loops without a
@@ -349,7 +365,7 @@ namespace Glitter
             }
 
             // Construct a while statement with the conditional from the for loop.
-            body = new WhileStatement(conditional, body);
+            body = new WhileStatement(conditional, body, lineNumber);
 
             // If an initializer was specified it should be executed prior to the start of the loop. Construct
             // another block with the initializer first and the while second.
@@ -359,7 +375,8 @@ namespace Glitter
                 {
                     initializer,
                     body
-                });
+                },
+                lineNumber);
             }
 
             return body;
@@ -383,10 +400,11 @@ namespace Glitter
         /// </summary>
         private Statement PrintStatement()
         {
+            var lineNumber = PreviousToken.LineNumber;
             var expression = Expression();
             Consume(TokenType.Semicolon, "Expected ; after value");
 
-            return new PrintStatement(expression);
+            return new PrintStatement(expression, lineNumber);
         }
 
         /// <summary>
@@ -395,10 +413,11 @@ namespace Glitter
         /// <returns></returns>
         private Statement ExpressionStatement()
         {
+            var lineNumber = CurrentToken.LineNumber;
             var expression = Expression();
             Consume(TokenType.Semicolon, "Expected ; after expression");
 
-            return new ExpressionStatement(expression);
+            return new ExpressionStatement(expression, lineNumber);
         }
 
         /// <summary>
@@ -417,6 +436,7 @@ namespace Glitter
             // Evaluate the left side of the (potential) assignment expression. Once the lhs expression has been
             // read and if the following token is the "=" operator then treat this as an assignment expression.
             // Otherwise fallthrough to the next rule (equality).
+            var leftToken = CurrentToken;       // Hopefully this is useful enough for the error below.
             var leftValue = Or();
 
             if (AdvanceIfCurrentTokenIsOneOf(TokenType.Equal))
@@ -435,7 +455,7 @@ namespace Glitter
                 }
                 else
                 {
-                    throw RaiseError("Unexpected assignment target", leftValue.ToString(), equalsToken.LineNumber);
+                    throw RaiseError("Unexpected assignment target", leftToken);
                 }
             }
             else
@@ -610,10 +630,7 @@ namespace Glitter
             //  TODO: add check to callnode.
             if (arguments.Count > 32)
             {
-                RaiseError(
-                    "Cannot have more than 32 arguments",
-                    CurrentToken.Lexeme,
-                    CurrentToken.LineNumber);
+                RaiseError("Cannot have more than 32 arguments", CurrentToken);
             }
 
             return new CallExpression(callee, arguments);
@@ -664,7 +681,7 @@ namespace Glitter
                 return new GroupingExpression(expression);
             }
 
-            throw RaiseError("Expected expression", CurrentToken.ToString(), CurrentToken.LineNumber);
+            throw RaiseError("Expected expression", CurrentToken);
         }
 
         /// <summary>
@@ -681,7 +698,7 @@ namespace Glitter
                 return AdvanceToNextToken();
             }
 
-            throw RaiseError(messageIfUnexpected, CurrentToken.ToString(), CurrentToken.LineNumber);
+            throw RaiseError(messageIfUnexpected, CurrentToken);
         }
 
         /// <summary>
@@ -718,20 +735,19 @@ namespace Glitter
             }
         }
 
-        private ParserException RaiseError(string message, string what, int lineNumber)
+        // TODO: Refactor this into accepting a ParserException base class and returning it so we can get more
+        // specialied exceptions.
+        private ParserException RaiseError(string message, Token currentToken)
         {
+            var exception = new ParserException(message, currentToken);
+
             if (OnError != null)
             {
-                OnError.Invoke(this, new ParseErrorEventArgs(){
-                    Message = message,
-                    What = what,
-                    LineNumber = lineNumber
-                });
+                OnError.Invoke(this, new ParseErrorEventArgs(exception));
             }
 
             HasParseErrors = true;
-
-            return new ParserException(message, what, lineNumber);
+            return exception;
         }
 
         // TODO: Optimze by providing common non-params.
@@ -772,8 +788,11 @@ namespace Glitter
 
     public class ParseErrorEventArgs : EventArgs
     {
-        public string Message { get; set; }
-        public string What { get; set; }
-        public int LineNumber { get; set; }
+        public ParseErrorEventArgs(ParserException e)
+        {
+            Exception = e;
+        }
+
+        public ParserException Exception { get; }
     }
 }

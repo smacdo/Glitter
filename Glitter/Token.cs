@@ -25,17 +25,29 @@ namespace Glitter
         private object _rawObject;
         private double _rawNumber;
         
-        public static Token CreateNonLiteral(string lexeme, TokenType type, int lineNumber)
+        public static Token CreateNonLiteral(
+            string lexeme,
+            TokenType type,
+            string sourceFilePath,
+            int lineNumber,
+            int startIndex,
+            int length)
         {
             if (type == TokenType.String || type == TokenType.Number || type == TokenType.Identifier)
             {
                 throw new InvalidOperationException("Literal token types must have accompanying literal value");
             }
 
-            return new Token(lexeme, type, null, 0.0f, lineNumber);
+            return new Token(lexeme, type, null, 0.0f, sourceFilePath, lineNumber, startIndex, length);
         }
 
-        public static Token Identifier(string lexeme, string literal, int lineNumber)
+        public static Token Identifier(
+            string lexeme,
+            string literal,
+            string sourceFilePath,
+            int lineNumber,
+            int startIndex,
+            int length)
         {
             if (string.IsNullOrEmpty(lexeme))
             {
@@ -47,10 +59,24 @@ namespace Glitter
                 throw new ArgumentNullException(nameof(literal));
             }
 
-            return new Token(lexeme, TokenType.Identifier, literal, 0.0f, lineNumber);
+            return new Token(
+                lexeme,
+                TokenType.Identifier,
+                literal,
+                0.0f,
+                sourceFilePath,
+                lineNumber,
+                startIndex,
+                length);
         }
 
-        public static Token String(string lexeme, string literal, int lineNumber)
+        public static Token String(
+            string lexeme,
+            string literal,
+            string sourceFilePath,
+            int lineNumber,
+            int startIndex,
+            int length)
         {
             if (string.IsNullOrEmpty(lexeme))
             {
@@ -62,31 +88,79 @@ namespace Glitter
                 throw new ArgumentNullException(nameof(literal));
             }
 
-            return new Token(lexeme, TokenType.String, literal, 0.0f, lineNumber);
+            return new Token(lexeme, TokenType.String, literal, 0.0f, sourceFilePath, lineNumber, startIndex, length);
         }
 
-        public static Token Number(string lexeme, double literal, int lineNumber)
+        public static Token Number(
+            string lexeme,
+            double literal,
+            string sourceFilePath,
+            int lineNumber,
+            int startIndex,
+            int length)
         {
             if (string.IsNullOrEmpty(lexeme))
             {
                 throw new ArgumentNullException(nameof(lexeme));
             }
 
-            return new Token(lexeme, TokenType.Number, null, literal, lineNumber);
+            return new Token(lexeme, TokenType.Number, null, literal, sourceFilePath, lineNumber, startIndex, length);
         }
         
-        private Token(string lexeme, TokenType type, object rawObject, double rawNumber, int lineNumber)
+        /// <summary>
+        ///  Constructor.
+        /// </summary>
+        /// <param name="lexeme">Charcters in token.</param>
+        /// <param name="type">Token type (required).</param>
+        /// <param name="rawObject">Literal value, optional.</param>
+        /// <param name="rawNumber">Literal number, optional.</param>
+        /// <param name="startIndex">First character in token lexeme.</param>
+        /// <param name="length">Token character length.</param>
+        private Token(
+            string lexeme,
+            TokenType type,
+            object rawObject,
+            double rawNumber,
+            string sourceFilePath,
+            int lineNumber,
+            int startIndex,
+            int length)
         {
             Lexeme = lexeme;
-            LineNumber = lineNumber;
             Type = type;
+            LineNumber = lineNumber;
+            StartIndex = startIndex;
+            Length = length;
+            SourceFilePath = sourceFilePath;
 
             _rawObject = rawObject;
             _rawNumber = rawNumber;
         }
+        
+        /// <summary>
+        ///  Get string representing the token.
+        /// </summary>
+        public string Lexeme { get; }
 
-        public string Lexeme { get; private set; }
-        public int LineNumber { get; private set; }
+        /// <summary>
+        ///  Get the line number for the token.
+        /// </summary>
+        public int LineNumber { get; }
+
+        /// <summary>
+        ///  Get the file path for the token.
+        /// </summary>
+        public string SourceFilePath { get; }
+
+        /// <summary>
+        ///  Get the index for the first character of the lexeme in the original string.
+        /// </summary>
+        public int StartIndex { get; }
+
+        /// <summary>
+        ///  Get the length of the token in characters.
+        /// </summary>
+        public int Length { get; }
 
         public string LiteralIdentifier
         {
@@ -129,16 +203,6 @@ namespace Glitter
 
         public TokenType Type { get; private set; }
 
-        public static Token EndOfFile
-        {
-            get { return new Token("\0", TokenType.EndOfFile, null, 0, 0); }
-        }
-
-        public static Token None
-        {
-            get { return new Token(string.Empty, TokenType.None, null, 0, 0); }
-        }
-
         public override string ToString()
         {
             switch (Type)
@@ -177,6 +241,8 @@ namespace Glitter
                 case TokenType.RightParen: return "RightParen";
                 case TokenType.LeftBrace: return "LeftBrace";
                 case TokenType.RightBrace: return "RightBrace";
+                case TokenType.LeftBracket: return "LeftBracket";
+                case TokenType.RightBracket: return "RightBracket";
                 case TokenType.Comma: return "Comma";
                 case TokenType.Dot: return "Dot";
                 case TokenType.Minus: return "Minus";
@@ -196,12 +262,16 @@ namespace Glitter
                 // Keywords
                 case TokenType.And: return "And";
                 case TokenType.Base: return "Base";
+                case TokenType.Break: return "Break";
                 case TokenType.Class: return "Class";
+                case TokenType.Continue: return "Continue";
                 case TokenType.Else: return "Else";
                 case TokenType.False: return "False";
                 case TokenType.Function: return "Function";
                 case TokenType.For: return "For";
+                case TokenType.Foreach: return "Foreach";
                 case TokenType.If: return "If";
+                case TokenType.Let: return "Let";
                 case TokenType.Or: return "Or";
                 case TokenType.Undefined: return "Undefined";
                 case TokenType.Print: return "Print";
@@ -238,6 +308,8 @@ namespace Glitter
         RightParen,
         LeftBrace,
         RightBrace,
+        LeftBracket,
+        RightBracket,
         Comma,
         Dot,
         Minus,
@@ -257,12 +329,16 @@ namespace Glitter
         // Keywords
         And,
         Base,
+        Break,
         Class,
+        Continue,
         Else,
         False,
         Function,
         For,
+        Foreach,
         If,
+        Let,
         Or,
         Undefined,
         Print,
