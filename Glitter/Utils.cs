@@ -19,12 +19,11 @@ using System.Text;
 
 namespace Glitter
 {
-
+    /// <summary>
+    ///  Collection of string utilities.
+    /// </summary>
     public static class StringUtils
     {
-        public static long GetLineNumberForCharacterOffset(long offset)
-        {
-            throw new NotImplementedException();
-        }
+        
     }
 }

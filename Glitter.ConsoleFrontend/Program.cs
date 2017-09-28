@@ -25,15 +25,19 @@ namespace Glitter.ConsoleFrontend
     public class Program
     {
         private static ConsoleColor _defaultForegroundColor;
-        private static StringBuilder _interactiveModeCode;
+        private static string _userCode = string.Empty;
+        //private static StringBuilder _interactiveModeCode = new StringBuilder();
 
+        /// <summary>
+        ///  Program entry point.
+        /// </summary>
+        /// <param name="args">Program arguments.</param>
         public static void Main(string[] args)
         {
             // Configure console.
             _defaultForegroundColor = Console.ForegroundColor;
 
             // Run input.
-            // TODO: Handle interpreter exceptions by pretty printing.
             if (args.Length > 1)
             {
                 Console.WriteLine("Usage: glitter.exe [path/to/script.gli]");
@@ -57,6 +61,11 @@ namespace Glitter.ConsoleFrontend
             try
             {
                 var code = File.ReadAllText(fileName);
+
+                // TODO: Fix this hack by reading the source file in error formatter and loading it rather than shoving
+                // it into the interactive source buffer.
+                _userCode = code;
+
                 var interpreter = new ExecutionSession(Console.In, Console.Out)
                 {
                     OnException = HandleException
@@ -75,32 +84,73 @@ namespace Glitter.ConsoleFrontend
         /// </summary>
         private static void RunInteractive()
         {
+            Console.WriteLine(FormatInteractiveIntro());
+
+            // Create an interpreter for this interactive console session.
             var interpreter = new ExecutionSession(Console.In, Console.Out)
             {
                 OnException = HandleException
             };
 
-            _interactiveModeCode = new StringBuilder();
+            // Keep asking for input until the user quits.
+            var keepRunning = true;
 
-            while (true)
+            while (keepRunning)
             {
-                Console.Write("> ");
-
+                // Get user input.
+                Console.Write(">>> ");
                 var userInput = Console.ReadLine();
-                _interactiveModeCode.AppendLine(userInput);
 
-                interpreter.Run(userInput);
+                // Keep track of code history.
+                _userCode = userInput;
+
+                // Did the user input any special interactive keywords?
+                var cleanUserInput = userInput.Trim().ToLower();
+
+                if (cleanUserInput == "!quit")
+                {
+                    // User would like to quit the console and exit.
+                    keepRunning = false;
+                }
+                else
+                {
+                    // Nope, this looks like regular glitter code. Try running it and see what happens!
+                    interpreter.Run(userInput);
+                }
             }
         }
 
+        /// <summary>
+        ///  Pretty print exceptions when they happen.
+        /// </summary>
         private static void HandleException(object sender, ExecutionSessionErrorArgs args)
         {
             Console.ForegroundColor = ConsoleColor.Red;
 
-            var formatter = new ErrorFormatter() { InteractiveModeSourceCode = _interactiveModeCode.ToString() };
+            var formatter = new ErrorFormatter() { SourceCode = _userCode };
             Console.Write(formatter.Format(args.Exceptions));
             
             Console.ForegroundColor = _defaultForegroundColor;
+        }
+
+        /// <summary>
+        ///  Return a formatted introduction to the interactive console when started.
+        /// </summary>
+        private static string FormatInteractiveIntro()
+        {
+            var output = new StringBuilder();
+
+            var majorVersion = Constants.MajorVersion;
+            var minorVersion = Constants.MinorVersion;
+            var patchVersion = Constants.PatchVersion;
+
+            output.Append(Constants.GlitterLangName);
+            output.AppendFormat(" {0}.{1}.{2}", majorVersion, minorVersion, patchVersion);
+            output.AppendLine(" Interactive Console");
+
+            output.AppendLine("Type \"!quit\" to exit the interactive console");
+
+            return output.ToString();
         }
     }
 }

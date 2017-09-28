@@ -28,7 +28,7 @@ namespace Glitter
         private string _filePath;
         private int _startIndex = 0;
         private int _currentIndex = 0;
-        private int _lineNumber = 0;            // TODO: REMOVE.
+        private int _lineNumber = 1;
 
         /// <summary>
         ///  Constructor.

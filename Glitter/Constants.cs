@@ -21,6 +21,10 @@ namespace Glitter
 {
     public static class Constants
     {
+        public static string GlitterLangName { get { return "Glitter"; } }
+        public static int MajorVersion { get { return 0; } }     // TODO: Auto-load this!
+        public static int MinorVersion { get { return 1; } }     // TODO: Auto-load this!
+        public static int PatchVersion { get { return 0; } }     // TODO: Auto-load this!
         public static string NullName { get { return "undefined"; } }
     }
 }
